@@ -20,6 +20,9 @@ import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.pagzone.sonavi.R
+import com.pagzone.sonavi.ui.screen.page.AddSoundPage
+import com.pagzone.sonavi.ui.screen.page.DashboardPage
+import com.pagzone.sonavi.ui.screen.page.LibraryPage
 import com.pagzone.sonavi.ui.theme.Typography
 
 @Preview(showSystemUi = true)
@@ -78,11 +81,15 @@ fun MainScreen(modifier: Modifier = Modifier) {
                 }
             }
         }) { innerPadding ->
-        ContentScreen(modifier = Modifier.padding(innerPadding))
+        ContentScreen(modifier = Modifier.padding(innerPadding), selectedIndex)
     }
 }
 
 @Composable
-fun ContentScreen(modifier: Modifier = Modifier) {
-
+fun ContentScreen(modifier: Modifier = Modifier, selectedIndex: Int) {
+    when (selectedIndex) {
+        0 -> DashboardPage(modifier)
+        1 -> AddSoundPage(modifier)
+        2 -> LibraryPage(modifier)
+    }
 }
