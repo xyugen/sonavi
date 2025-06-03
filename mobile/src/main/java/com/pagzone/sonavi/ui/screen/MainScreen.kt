@@ -11,6 +11,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.rememberNavController
 import com.pagzone.sonavi.ui.component.BottomNavBar
 import com.pagzone.sonavi.ui.navigation.AppNavHost
@@ -31,13 +32,16 @@ fun MainScreen(modifier: Modifier = Modifier) {
         bottomBar = {
             BottomNavBar(navController)
         }) { innerPadding ->
-
         Box(
             modifier = Modifier
                 .fillMaxSize()
                 .background(brush = gradient)
+                .padding(21.dp)
         ) {
-            AppNavHost(navController, Modifier.padding(innerPadding))
+            AppNavHost(
+                navController,
+                Modifier.padding(innerPadding)
+            )
         }
     }
 }
