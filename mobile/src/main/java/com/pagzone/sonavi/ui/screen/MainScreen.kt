@@ -12,6 +12,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
 import com.pagzone.sonavi.ui.component.BottomNavBar
@@ -49,7 +50,8 @@ fun MainScreen(modifier: Modifier = Modifier) {
                 .padding(innerPadding)
         ) {
             AppNavHost(
-                navController
+                navController,
+                modifier = Modifier.padding(horizontal = 21.dp)
             )
         }
     }
