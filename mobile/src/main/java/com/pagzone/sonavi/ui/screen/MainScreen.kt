@@ -2,6 +2,9 @@ package com.pagzone.sonavi.ui.screen
 
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.AddCircle
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.NavigationBar
@@ -21,7 +24,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import com.pagzone.sonavi.R
 import com.pagzone.sonavi.ui.screen.page.AddSoundPage
-import com.pagzone.sonavi.ui.screen.page.DashboardPage
+import com.pagzone.sonavi.ui.screen.page.HomePage
 import com.pagzone.sonavi.ui.screen.page.LibraryPage
 import com.pagzone.sonavi.ui.theme.Typography
 
@@ -31,17 +34,17 @@ fun MainScreen(modifier: Modifier = Modifier) {
 
     val navItemList = listOf(
         NavItem(
-            "Dashboard",
-            ImageVector.vectorResource(id = R.drawable.ic_dashboard)
+            "Home",
+            Icons.Filled.Home
         ),
         NavItem(
             "Add Sound",
-            ImageVector.vectorResource(id = R.drawable.ic_circle_plus)
+            Icons.Filled.AddCircle
         ),
         NavItem(
             "Library",
-            ImageVector.vectorResource(id = R.drawable.ic_music)
-        ),
+            ImageVector.vectorResource(R.drawable.ic_music_note)
+        )
     )
 
     var selectedIndex by remember { mutableIntStateOf(0) }
@@ -88,7 +91,7 @@ fun MainScreen(modifier: Modifier = Modifier) {
 @Composable
 fun ContentScreen(modifier: Modifier = Modifier, selectedIndex: Int) {
     when (selectedIndex) {
-        0 -> DashboardPage(modifier)
+        0 -> HomePage(modifier)
         1 -> AddSoundPage(modifier)
         2 -> LibraryPage(modifier)
     }
