@@ -17,5 +17,12 @@ sealed class NavRoute(val route: String, val label: String, val iconRes: Int) {
 
     companion object {
         val bottomNavItems = listOf(Home, AddSound, Library)
+
+        fun fromRoute(route: String?): NavRoute? = when (route) {
+            Home.route -> Home
+            AddSound.route -> AddSound
+            Library.route -> Library
+            else -> null
+        }
     }
 }
