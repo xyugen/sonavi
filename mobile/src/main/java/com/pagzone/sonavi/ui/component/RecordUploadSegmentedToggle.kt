@@ -18,7 +18,7 @@ import androidx.compose.ui.res.vectorResource
 import com.pagzone.sonavi.R
 
 @Composable
-fun RecordUploadToggle(modifier: Modifier = Modifier) {
+fun RecordUploadSegmentedToggle(modifier: Modifier = Modifier) {
     var selectedIndex by remember { mutableIntStateOf(0) }
     val options = listOf(
         SegmentedButtonItem(
@@ -31,10 +31,9 @@ fun RecordUploadToggle(modifier: Modifier = Modifier) {
         )
     )
 
-    SingleChoiceSegmentedButtonRow {
+    SingleChoiceSegmentedButtonRow(modifier = modifier) {
         options.forEachIndexed { index, buttonItem ->
             SegmentedButton(
-                modifier = modifier,
                 shape = SegmentedButtonDefaults.itemShape(
                     index = index,
                     count = options.size
