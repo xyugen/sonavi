@@ -42,7 +42,6 @@ fun RecordSoundButton(modifier: Modifier = Modifier) {
         contentAlignment = Alignment.Center,
         modifier = modifier
     ) {
-        // Ripple Circles
         scopes.forEachIndexed { index, anim ->
             val scale = anim.value
             Box(
@@ -60,7 +59,6 @@ fun RecordSoundButton(modifier: Modifier = Modifier) {
             )
         }
 
-        // Center Button
         Button(
             onClick = {
                 isAnimating = !isAnimating
@@ -75,7 +73,7 @@ fun RecordSoundButton(modifier: Modifier = Modifier) {
             if (countdown != null) {
                 Text(
                     text = countdown.toString(),
-                    style = MaterialTheme.typography.titleMedium,
+                    style = MaterialTheme.typography.titleLarge,
                     color = MaterialTheme.colorScheme.onPrimary
                 )
             } else {
