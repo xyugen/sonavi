@@ -7,10 +7,6 @@ import androidx.compose.material3.SegmentedButtonDefaults
 import androidx.compose.material3.SingleChoiceSegmentedButtonRow
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableIntStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
@@ -18,8 +14,11 @@ import androidx.compose.ui.res.vectorResource
 import com.pagzone.sonavi.R
 
 @Composable
-fun RecordUploadSegmentedToggle(modifier: Modifier = Modifier) {
-    var selectedIndex by remember { mutableIntStateOf(0) }
+fun RecordUploadSegmentedToggle(
+    selectedIndex: Int,
+    onSelectionChanged: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
     val options = listOf(
         SegmentedButtonItem(
             "Record",
@@ -38,7 +37,7 @@ fun RecordUploadSegmentedToggle(modifier: Modifier = Modifier) {
                     index = index,
                     count = options.size
                 ),
-                onClick = { selectedIndex = index },
+                onClick = { onSelectionChanged(index) },
                 selected = index == selectedIndex,
                 colors = SegmentedButtonDefaults.colors(
                     activeContainerColor = MaterialTheme.colorScheme.secondary,
