@@ -113,12 +113,6 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "Mobile/MainActivity"
 
         private const val START_ACTIVITY_PATH = "/start-activity"
-        private const val COUNT_PATH = "/count"
-        private const val IMAGE_PATH = "/image"
-        private const val IMAGE_KEY = "photo"
-        private const val TIME_KEY = "time"
-        private const val COUNT_KEY = "count"
-        private const val CAMERA_CAPABILITY = "camera"
         private const val WEAR_CAPABILITY = "wear"
     }
 }
