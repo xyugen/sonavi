@@ -6,27 +6,31 @@
 package com.pagzone.sonavi.presentation
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
-import androidx.compose.ui.res.stringResource
-import androidx.compose.ui.text.style.TextAlign
-import androidx.compose.ui.tooling.preview.Preview
+import androidx.core.net.toUri
+import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.wear.compose.material.MaterialTheme
-import androidx.wear.compose.material.Text
 import androidx.wear.compose.material.TimeText
-import androidx.wear.tooling.preview.devices.WearDevices
-import com.pagzone.sonavi.R
+import com.google.android.gms.wearable.CapabilityClient
+import com.google.android.gms.wearable.Wearable.getCapabilityClient
+import com.google.android.gms.wearable.Wearable.getDataClient
+import com.google.android.gms.wearable.Wearable.getMessageClient
 import com.pagzone.sonavi.presentation.theme.SonaviTheme
 
 class MainActivity : ComponentActivity() {
+
+    private val dataClient by lazy { getDataClient(this) }
+    private val messageClient by lazy { getMessageClient(this) }
+    private val capabilityClient by lazy { getCapabilityClient(this) }
+
     override fun onCreate(savedInstanceState: Bundle?) {
         installSplashScreen()
 
@@ -35,13 +39,43 @@ class MainActivity : ComponentActivity() {
         setTheme(android.R.style.Theme_DeviceDefault)
 
         setContent {
-            WearApp("Android")
+            WearApp()
         }
+    }
+
+    override fun onResume() {
+        super.onResume()
+        capabilityClient.addListener(
+            capabilityListener,
+            "wear://".toUri(),
+            CapabilityClient.FILTER_REACHABLE
+        )
+    }
+
+    override fun onPause() {
+        super.onPause()
+        capabilityClient.removeListener(capabilityListener)
+    }
+
+    private val capabilityListener =
+        CapabilityClient.OnCapabilityChangedListener { capabilityInfo ->
+            val nodes = capabilityInfo.nodes
+            if (nodes.isNotEmpty()) {
+                Log.d(TAG, "Node connected: ${nodes.first().displayName}")
+            } else {
+                Log.d(TAG, "No wearable connected")
+            }
+        }
+
+    companion object {
+        private const val TAG = "Wear/MainActivity"
+
+        const val WEAR_CAPABILITY = "wear"
     }
 }
 
 @Composable
-fun WearApp(greetingName: String) {
+fun WearApp() {
     SonaviTheme {
         Box(
             modifier = Modifier
@@ -50,23 +84,6 @@ fun WearApp(greetingName: String) {
             contentAlignment = Alignment.Center
         ) {
             TimeText()
-            Greeting(greetingName = greetingName)
         }
     }
-}
-
-@Composable
-fun Greeting(greetingName: String) {
-    Text(
-        modifier = Modifier.fillMaxWidth(),
-        textAlign = TextAlign.Center,
-        color = MaterialTheme.colors.primary,
-        text = stringResource(R.string.hello_world, greetingName)
-    )
-}
-
-@Preview(device = WearDevices.SMALL_ROUND, showSystemUi = true)
-@Composable
-fun DefaultPreview() {
-    WearApp("Preview Android")
 }

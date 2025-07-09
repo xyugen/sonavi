@@ -22,7 +22,9 @@ import com.pagzone.sonavi.ui.navigation.NavRoute
 
 @Preview(showSystemUi = true)
 @Composable
-fun MainScreen(modifier: Modifier = Modifier) {
+fun MainScreen(
+    modifier: Modifier = Modifier, onStartWearableActivityClick: () -> Unit = {}
+) {
     val navController = rememberNavController()
     val gradient = Brush.verticalGradient(
         colors = listOf(

@@ -22,7 +22,10 @@ import com.pagzone.sonavi.ui.component.ConnectionStatus
 
 @Preview(showBackground = true)
 @Composable
-fun HomePage(modifier: Modifier = Modifier) {
+fun HomePage(
+    modifier: Modifier = Modifier,
+    onStartWearableActivityClick: () -> Unit = {}
+) {
     Column(
         modifier = modifier
             .fillMaxSize()
