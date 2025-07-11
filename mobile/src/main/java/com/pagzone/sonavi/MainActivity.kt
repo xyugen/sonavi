@@ -8,14 +8,13 @@ import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.core.net.toUri
 import androidx.lifecycle.lifecycleScope
-import androidx.lifecycle.viewmodel.compose.viewModel
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.Wearable
-import com.pagzone.sonavi.datalayer.ClientDataViewModel
 import com.pagzone.sonavi.ui.screen.MainScreen
 import com.pagzone.sonavi.ui.theme.SonaviTheme
+import com.pagzone.sonavi.viewmodel.ClientDataViewModel
 import dagger.hilt.android.AndroidEntryPoint
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.async
@@ -35,7 +34,6 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
-        startWearableActivity()
         setContent {
             SonaviTheme {
                 MainScreen(
@@ -65,16 +63,30 @@ class MainActivity : ComponentActivity() {
                     }
                 }.awaitAll()
 
-                clientDataViewModel.updateDeviceName(nodes.first().displayName)
-                clientDataViewModel.updateConnectionStatus(true)
+                val firstNode = nodes.first()
+                if (firstNode.isNearby) {
+                    Log.d(TAG, "Starting activity requests sent to ${firstNode.displayName}")
+                    clientDataViewModel.updateDeviceName(nodes.first().displayName)
+                    clientDataViewModel.updateIsConnected(true)
+                }
 
-                Log.d(TAG, "Starting activity requests sent successfully! ${nodes.first().displayName}")
+                Log.d(
+                    TAG,
+                    "Starting activity requests sent successfully!"
+                )
             } catch (cancellationException: CancellationException) {
                 throw cancellationException
             } catch (exception: Exception) {
                 Log.d(TAG, "Starting activity failed: $exception")
             }
         }
+    }
+
+    override fun onStart() {
+        Log.d(TAG, "onStart()")
+        super.onStart()
+
+        startWearableActivity()
     }
 
     override fun onResume() {
@@ -101,10 +113,12 @@ class MainActivity : ComponentActivity() {
             val nodes = capabilityInfo.nodes
             if (nodes.isNotEmpty()) {
                 clientDataViewModel.updateDeviceName(nodes.first().displayName)
-                clientDataViewModel.updateConnectionStatus(true)
+                clientDataViewModel.updateIsConnected(true)
 
                 Log.d(TAG, "Node connected: ${nodes.first().displayName}")
             } else {
+                clientDataViewModel.clearData()
+
                 Log.d(TAG, "No wearable connected")
             }
         }

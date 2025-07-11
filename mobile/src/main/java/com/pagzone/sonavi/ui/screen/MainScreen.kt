@@ -13,8 +13,10 @@ import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.pagzone.sonavi.viewmodel.ClientDataViewModel
 import com.pagzone.sonavi.ui.component.BottomNavBar
 import com.pagzone.sonavi.ui.component.TopAppBar
 import com.pagzone.sonavi.ui.navigation.AppNavHost
@@ -23,7 +25,9 @@ import com.pagzone.sonavi.ui.navigation.NavRoute
 @Preview(showSystemUi = true)
 @Composable
 fun MainScreen(
-    modifier: Modifier = Modifier, onStartWearableActivityClick: () -> Unit = {}
+    modifier: Modifier = Modifier,
+    viewModel: ClientDataViewModel = viewModel(),
+    onStartWearableActivityClick: () -> Unit = {}
 ) {
     val navController = rememberNavController()
     val gradient = Brush.verticalGradient(
@@ -53,7 +57,8 @@ fun MainScreen(
         ) {
             AppNavHost(
                 navController,
-                modifier = Modifier.padding(horizontal = 21.dp)
+                modifier = Modifier.padding(horizontal = 21.dp),
+                viewModel = viewModel
             )
         }
     }

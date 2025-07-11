@@ -18,19 +18,24 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
+import com.pagzone.sonavi.viewmodel.ClientDataViewModel
 import com.pagzone.sonavi.ui.component.ConnectionStatus
 
 @Preview(showBackground = true)
 @Composable
 fun HomePage(
     modifier: Modifier = Modifier,
+    viewModel: ClientDataViewModel = viewModel(),
     onStartWearableActivityClick: () -> Unit = {}
 ) {
     Column(
         modifier = modifier
             .fillMaxSize()
     ) {
-        ConnectionStatus()
+        ConnectionStatus(
+            viewModel = viewModel
+        )
         Spacer(modifier = Modifier.height(8.dp))
         Text(
             text = "Sound History",

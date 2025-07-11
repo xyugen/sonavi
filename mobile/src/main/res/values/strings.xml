@@ -1,3 +1,8 @@
 <resources>
     <string name="app_name">Sonavi</string>
+    <string name="data_item_changed">DataItem changed</string>
+    <string name="data_item_deleted">DataItem deleted</string>
+    <string name="data_item_unknown">Unknown DataItem type</string>
+    <string name="message_from_watch">Message from watch</string>
+    <string name="capability_changed">Capability changed</string>
 </resources>
