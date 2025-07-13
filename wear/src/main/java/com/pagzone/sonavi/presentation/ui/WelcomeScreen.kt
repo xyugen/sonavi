@@ -1,5 +1,6 @@
 package com.pagzone.sonavi.presentation.ui
 
+import android.util.Log
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.fillMaxSize
@@ -9,10 +10,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.runtime.Composable
-import androidx.compose.runtime.getValue
-import androidx.compose.runtime.mutableStateOf
-import androidx.compose.runtime.remember
-import androidx.compose.runtime.setValue
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Color
@@ -29,7 +27,15 @@ import com.pagzone.sonavi.presentation.theme.AppTheme
 
 @Preview(device = "id:wearos_small_round")
 @Composable
-fun WelcomeScreen(modifier: Modifier = Modifier) {
+fun WelcomeScreen(
+    modifier: Modifier = Modifier,
+    isConnected: Boolean = true,
+    onStartListening: () -> Unit = {}
+) {
+    LaunchedEffect(isConnected) {
+        Log.d("WearNavGraph", "isConnected changed to: $isConnected")
+    }
+
     Scaffold(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = modifier
@@ -43,7 +49,10 @@ fun WelcomeScreen(modifier: Modifier = Modifier) {
                 fontSize = 18.sp,
                 textAlign = TextAlign.Center
             )
-            StartButton()
+            StartButton(
+                isEnabled = isConnected,
+                onClick = onStartListening
+            )
             Text(
                 text = "Click the button above\nto start listening",
                 textAlign = TextAlign.Center
@@ -53,20 +62,22 @@ fun WelcomeScreen(modifier: Modifier = Modifier) {
 }
 
 @Composable
-fun StartButton(modifier: Modifier = Modifier, isEnabled: Boolean = true) {
-    var disable by remember { mutableStateOf(!isEnabled) }
-
+fun StartButton(
+    modifier: Modifier = Modifier,
+    isEnabled: Boolean = true,
+    onClick: () -> Unit = {}
+) {
     IconButton(
         modifier = modifier.size(76.dp),
         onClick = {
-            disable = !disable
+            onClick()
         },
         colors = IconButtonDefaults.iconButtonColors(
             containerColor = AppTheme.colors.primary,
             contentColor = Color.White,
             disabledContainerColor = AppTheme.colors.disabled
         ),
-        enabled = disable,
+        enabled = isEnabled,
         content = {
             Icon(
                 imageVector = ImageVector.vectorResource(id = R.drawable.ic_mic),
