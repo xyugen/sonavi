@@ -9,21 +9,12 @@ import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Box
-import androidx.compose.foundation.layout.fillMaxSize
-import androidx.compose.runtime.Composable
-import androidx.compose.ui.Alignment
-import androidx.compose.ui.Modifier
 import androidx.core.net.toUri
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
-import androidx.wear.compose.material.MaterialTheme
-import androidx.wear.compose.material.TimeText
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.Wearable.getCapabilityClient
 import com.google.android.gms.wearable.Wearable.getDataClient
 import com.google.android.gms.wearable.Wearable.getMessageClient
-import com.pagzone.sonavi.presentation.theme.SonaviTheme
 
 class MainActivity : ComponentActivity() {
 
@@ -71,19 +62,5 @@ class MainActivity : ComponentActivity() {
         private const val TAG = "Wear/MainActivity"
 
         const val WEAR_CAPABILITY = "wear"
-    }
-}
-
-@Composable
-fun WearApp() {
-    SonaviTheme {
-        Box(
-            modifier = Modifier
-                .fillMaxSize()
-                .background(MaterialTheme.colors.background),
-            contentAlignment = Alignment.Center
-        ) {
-            TimeText()
-        }
     }
 }
