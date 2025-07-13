@@ -6,6 +6,7 @@ import androidx.compose.runtime.getValue
 import androidx.navigation.NavHostController
 import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
+import com.pagzone.sonavi.presentation.ui.ListeningPagerScreen
 import com.pagzone.sonavi.presentation.ui.WelcomeScreen
 import com.pagzone.sonavi.presentation.viewmodel.WearViewModel
 
@@ -21,10 +22,10 @@ fun WearNavGraph(navController: NavHostController, viewModel: WearViewModel) {
             )
         }
         composable("listening") {
-//            ListeningPagerScreen(
-//                onStopListening = { navController.popBackStack() },
-//                detectedSounds = viewModel.detectedSounds
-//            )
+            ListeningPagerScreen(
+                onStopListening = { navController.popBackStack() },
+                detectedSound = "Test"
+            )
         }
     }
 }
