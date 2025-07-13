@@ -1,5 +1,6 @@
 package com.pagzone.sonavi.ui.screen
 
+import android.widget.Toast
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
@@ -11,16 +12,17 @@ import androidx.compose.runtime.getValue
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
-import com.pagzone.sonavi.viewmodel.ClientDataViewModel
 import com.pagzone.sonavi.ui.component.BottomNavBar
 import com.pagzone.sonavi.ui.component.TopAppBar
 import com.pagzone.sonavi.ui.navigation.AppNavHost
 import com.pagzone.sonavi.ui.navigation.NavRoute
+import com.pagzone.sonavi.viewmodel.ClientDataViewModel
 
 @Preview(showSystemUi = true)
 @Composable
@@ -41,10 +43,16 @@ fun MainScreen(
     val currentRoute = navBackStackEntry?.destination?.route
     val currentTitle = NavRoute.fromRoute(currentRoute)?.label ?: ""
 
+    val context = LocalContext.current
+
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
-            TopAppBar(title = currentTitle)
+            TopAppBar(
+                title = currentTitle,
+                onListenModeChange = { value ->
+                    Toast.makeText(context, "Listen mode is $value", Toast.LENGTH_SHORT).show()
+                })
         },
         bottomBar = {
             BottomNavBar(navController)

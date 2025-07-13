@@ -91,6 +91,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onResume() {
         super.onResume()
+        dataClient.addListener(clientDataViewModel)
+        messageClient.addListener(clientDataViewModel)
         capabilityClient.addListener(
             capabilityListener,
             "wear://".toUri(),
@@ -100,6 +102,8 @@ class MainActivity : ComponentActivity() {
 
     override fun onPause() {
         super.onPause()
+        dataClient.removeListener(clientDataViewModel)
+        messageClient.removeListener(clientDataViewModel)
         capabilityClient.removeListener(capabilityListener)
     }
 

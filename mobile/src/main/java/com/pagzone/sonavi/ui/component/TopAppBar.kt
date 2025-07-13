@@ -35,7 +35,12 @@ import com.pagzone.sonavi.ui.theme.Gray10
 
 @Preview
 @Composable
-fun TopAppBar(modifier: Modifier = Modifier, title: String = "") {
+fun TopAppBar(
+    modifier: Modifier = Modifier,
+    title: String = "",
+    isListenModeEnabled: Boolean = false,
+    onListenModeChange: (Boolean) -> Unit = {}
+) {
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -89,6 +94,9 @@ fun TopAppBar(modifier: Modifier = Modifier, title: String = "") {
             }
         }
         Spacer(modifier = Modifier.height(14.dp))
-        ListenModeToggle()
+        ListenModeToggle(
+            isEnabled = isListenModeEnabled,
+            onChange = onListenModeChange
+        )
     }
 }

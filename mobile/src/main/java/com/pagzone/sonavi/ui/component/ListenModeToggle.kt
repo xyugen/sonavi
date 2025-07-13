@@ -30,7 +30,11 @@ import com.pagzone.sonavi.ui.theme.Blue80
 
 @Preview
 @Composable
-fun ListenModeToggle(modifier: Modifier = Modifier, isEnabled: Boolean = false) {
+fun ListenModeToggle(
+    modifier: Modifier = Modifier,
+    isEnabled: Boolean = false,
+    onChange: (Boolean) -> Unit = {}
+) {
     val gradient = Brush.horizontalGradient(
         listOf(
             Blue75,
@@ -78,6 +82,7 @@ fun ListenModeToggle(modifier: Modifier = Modifier, isEnabled: Boolean = false) 
                 checked = toggleState,
                 onCheckedChange = {
                     toggleState = it
+                    onChange(it)
                 }
             )
         }
