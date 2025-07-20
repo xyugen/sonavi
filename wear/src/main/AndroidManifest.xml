@@ -2,6 +2,7 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
 
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
 
     <uses-feature android:name="android.hardware.type.watch" />
 
@@ -15,16 +16,13 @@
             android:name="com.google.android.wearable"
             android:required="true" />
 
-        <uses-library
-            android:name="com.google.android.wearable"
-            android:required="true" />
-        <!--
-               Set to true if your app is Standalone, that is, it does not require the handheld
-               app to run.
-        -->
         <meta-data
             android:name="com.google.android.wearable.standalone"
             android:value="false" />
+
+        <meta-data
+            android:name="com.google.android.gms.version"
+            android:value="@integer/google_play_services_version" />
 
         <activity
             android:name=".presentation.MainActivity"
@@ -37,6 +35,25 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
+
+        <service
+            android:name=".presentation.datalayer.DataLayerListenerService"
+            android:exported="true">
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data
+                    android:host="*"
+                    android:pathPrefix="@string/start_listening"
+                    android:scheme="wear" />
+            </intent-filter>
+            <intent-filter>
+                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
+                <data
+                    android:host="*"
+                    android:pathPrefix="@string/stop_listening"
+                    android:scheme="wear" />
+            </intent-filter>
+        </service>
     </application>
 
 </manifest>

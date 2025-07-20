@@ -36,10 +36,16 @@ fun WelcomeScreen(
         Log.d("WearNavGraph", "isConnected changed to: $isConnected")
     }
 
+    val subtext = if (isConnected) {
+        "Click the button above\nto start listening"
+    } else {
+        "Connect to your phone\nto start listening"
+    }
+
     Scaffold(modifier = modifier.fillMaxSize()) {
         Column(
             modifier = modifier
-                .padding(16.dp)
+                .padding(18.dp)
                 .fillMaxSize(),
             horizontalAlignment = Alignment.CenterHorizontally,
             verticalArrangement = Arrangement.SpaceBetween
@@ -54,7 +60,7 @@ fun WelcomeScreen(
                 onClick = onStartListening
             )
             Text(
-                text = "Click the button above\nto start listening",
+                text = subtext,
                 textAlign = TextAlign.Center
             )
         }

@@ -10,6 +10,7 @@ import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.viewModels
+import androidx.compose.runtime.LaunchedEffect
 import androidx.core.net.toUri
 import androidx.core.splashscreen.SplashScreen.Companion.installSplashScreen
 import androidx.lifecycle.lifecycleScope
@@ -18,6 +19,7 @@ import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.Wearable.getCapabilityClient
 import com.google.android.gms.wearable.Wearable.getDataClient
 import com.google.android.gms.wearable.Wearable.getMessageClient
+import com.pagzone.sonavi.presentation.navigation.NavigationManager
 import com.pagzone.sonavi.presentation.navigation.WearNavGraph
 import com.pagzone.sonavi.presentation.theme.SonaviTheme
 import com.pagzone.sonavi.presentation.viewmodel.WearViewModel
@@ -43,7 +45,16 @@ class MainActivity : ComponentActivity() {
         setContent {
             SonaviTheme {
                 val navController = rememberNavController()
-                WearNavGraph(navController = navController, viewModel = viewModel)
+                LaunchedEffect(Unit) {
+                    NavigationManager.setNavController(navController)
+                }
+
+                WearNavGraph(
+                    navController = navController,
+                    viewModel = viewModel,
+                    startListening = ::startListening,
+                    stopListening = ::stopListening
+                )
             }
         }
     }
@@ -51,6 +62,12 @@ class MainActivity : ComponentActivity() {
     override fun onStart() {
         super.onStart()
         startWearableActivity()
+    }
+
+    override fun onDestroy() {
+        super.onDestroy()
+
+        NavigationManager.clear()
     }
 
     override fun onResume() {
@@ -78,9 +95,11 @@ class MainActivity : ComponentActivity() {
                 val firstNode = nodes.first()
                 if (firstNode.isNearby) {
                     viewModel.setIsConnected(true)
+                    viewModel.setNodeId(firstNode.id)
                     Log.d(TAG, "Starting activity requests sent to ${firstNode.displayName}")
                 } else {
                     viewModel.setIsConnected(false)
+                    viewModel.clearNodeId()
                 }
 
                 Log.d(
@@ -95,20 +114,73 @@ class MainActivity : ComponentActivity() {
         }
     }
 
+    private fun startListening() {
+        Log.i(TAG, "Start listening")
+        val nodeId = viewModel.nodeId.value
+        if (nodeId == null) {
+            Log.w(TAG, "NodeId is null. Cannot send start message.")
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                messageClient.sendMessage(
+                    nodeId,
+                    START_LISTENING_PATH,
+                    null
+                ).await()
+                Log.d(TAG, "Start listening message sent successfully")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to send start listening message: ${e.message}")
+            }
+        }
+    }
+
+    private fun stopListening() {
+        Log.i(TAG, "Stop listening")
+        val nodeId = viewModel.nodeId.value
+        if (nodeId == null) {
+            Log.w(TAG, "NodeId is null. Cannot send start message.")
+            return
+        }
+
+        lifecycleScope.launch {
+            try {
+                messageClient.sendMessage(
+                    nodeId,
+                    STOP_LISTENING_PATH,
+                    null
+                ).await()
+                Log.d(TAG, "Stop listening message sent successfully")
+            } catch (e: CancellationException) {
+                throw e
+            } catch (e: Exception) {
+                Log.e(TAG, "Failed to send stop listening message: ${e.message}")
+            }
+        }
+    }
+
     private val capabilityListener =
         CapabilityClient.OnCapabilityChangedListener { capabilityInfo ->
             val nodes = capabilityInfo.nodes
             if (nodes.isNotEmpty() && nodes.first().isNearby) {
                 viewModel.setIsConnected(true)
+                viewModel.setNodeId(nodes.first().id)
                 Log.d(TAG, "Node connected: ${nodes.first().displayName}")
             } else {
                 viewModel.setIsConnected(false)
+                viewModel.clearNodeId()
                 Log.d(TAG, "No node connected")
             }
         }
 
     companion object {
         private const val TAG = "Wear/MainActivity"
+
+        private const val START_LISTENING_PATH = "/start_listening"
+        private const val STOP_LISTENING_PATH = "/stop_listening"
 
         const val MOBILE_CAPABILITY = "mobile"
     }

@@ -11,19 +11,30 @@ import com.pagzone.sonavi.presentation.ui.WelcomeScreen
 import com.pagzone.sonavi.presentation.viewmodel.WearViewModel
 
 @Composable
-fun WearNavGraph(navController: NavHostController, viewModel: WearViewModel) {
+fun WearNavGraph(
+    navController: NavHostController,
+    viewModel: WearViewModel,
+    startListening: () -> Unit,
+    stopListening: () -> Unit
+) {
     val isConnected by viewModel.isConnected.collectAsState()
 
     NavHost(navController = navController, startDestination = "welcome") {
         composable("welcome") {
             WelcomeScreen(
                 isConnected = isConnected,
-                onStartListening = { navController.navigate("listening") }
+                onStartListening = {
+                    startListening()
+                    navController.navigate("listening")
+                }
             )
         }
         composable("listening") {
             ListeningPagerScreen(
-                onStopListening = { navController.popBackStack() },
+                onStopListening = {
+                    stopListening()
+                    navController.popBackStack()
+                },
                 detectedSound = "Test"
             )
         }

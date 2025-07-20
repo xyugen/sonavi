@@ -23,16 +23,6 @@
                 <category android:name="android.intent.category.LAUNCHER" />
             </intent-filter>
         </activity>
-
-        <service
-            android:name=".datalayer.DataLayerListenerService"
-            android:enabled="true"
-            android:exported="true">
-            <intent-filter>
-                <action android:name="com.google.android.gms.wearable.DATA_CHANGED" />
-                <action android:name="com.google.android.gms.wearable.MESSAGE_RECEIVED" />
-            </intent-filter>
-        </service>
     </application>
 
 </manifest>
