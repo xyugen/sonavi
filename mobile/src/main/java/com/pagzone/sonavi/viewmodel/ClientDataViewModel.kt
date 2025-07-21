@@ -23,6 +23,18 @@ class ClientDataViewModel @Inject constructor(
     fun clearEvents() = repository.clearEvents()
     fun clearData() = repository.clearData()
 
+    fun initializeListeners() {
+        viewModelScope.launch {
+            repository.initializeListeners()
+        }
+    }
+
+    fun destroyListeners() {
+        viewModelScope.launch {
+            repository.destroyListeners()
+        }
+    }
+
     fun startWearableActivity() {
         viewModelScope.launch {
             repository.startWearableActivity()

@@ -46,13 +46,13 @@ class MainActivity : ComponentActivity() {
         super.onStart()
 
         startWearableActivity()
-        ClientDataRepositoryImpl.initializeListeners()
+        clientDataViewModel.initializeListeners()
     }
 
     override fun onStop() {
         super.onStop()
 
-        ClientDataRepositoryImpl.destroyListeners()
+        clientDataViewModel.destroyListeners()
     }
 
     /**
