@@ -1,25 +1,46 @@
 package com.pagzone.sonavi.presentation.viewmodel
 
 import androidx.lifecycle.ViewModel
-import kotlinx.coroutines.flow.MutableStateFlow
+import androidx.lifecycle.viewModelScope
+import com.pagzone.sonavi.presentation.data.repository.WearRepository
+import com.pagzone.sonavi.presentation.data.repository.WearRepositoryImpl
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
 
-class WearViewModel : ViewModel() {
-    private val _isConnected = MutableStateFlow(false)
-    val isConnected: StateFlow<Boolean> = _isConnected
+class WearViewModel(
+    private val repository: WearRepository = WearRepositoryImpl
+) : ViewModel() {
+    val isConnected: StateFlow<Boolean> = repository.isConnected
+    val nodeId: StateFlow<String?> = repository.nodeId
+    val isListening: StateFlow<Boolean> = repository.isListening
 
-    private val _nodeId = MutableStateFlow<String?>(null)
-    val nodeId: StateFlow<String?> = _nodeId
-
-    fun setIsConnected(connected: Boolean) {
-        _isConnected.value = connected
+    fun initializeListeners() {
+        viewModelScope.launch {
+            repository.initializeListeners()
+        }
     }
 
-    fun setNodeId(nodeId: String) {
-        _nodeId.value = nodeId
+    fun destroyListeners() {
+        viewModelScope.launch {
+            repository.destroyListeners()
+        }
     }
 
-    fun clearNodeId() {
-        _nodeId.value = null
+    fun startWearableActivity() {
+        viewModelScope.launch {
+            repository.startWearableActivity()
+        }
+    }
+
+    fun startListening() {
+        viewModelScope.launch {
+            repository.startListening()
+        }
+    }
+
+    fun stopListening() {
+        viewModelScope.launch {
+            repository.stopListening()
+        }
     }
 }
