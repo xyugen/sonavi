@@ -46,13 +46,15 @@ fun MainScreen(
     val currentTitle = NavRoute.fromRoute(currentRoute)?.label ?: ""
 
     val isListening by viewModel.isListening.collectAsState()
+    val isConnected by viewModel.isConnected.collectAsState()
 
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
             TopAppBar(
                 title = currentTitle,
-                isListenModeEnabled = isListening,
+                isListenModeChecked = isListening,
+                isListenModeEnabled = isConnected,
                 onListenModeChange = { value ->
                     if (value) {
                         onStartListening()

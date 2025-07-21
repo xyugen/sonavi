@@ -38,6 +38,7 @@ import com.pagzone.sonavi.ui.theme.Gray10
 fun TopAppBar(
     modifier: Modifier = Modifier,
     title: String = "",
+    isListenModeChecked: Boolean = false,
     isListenModeEnabled: Boolean = false,
     onListenModeChange: (Boolean) -> Unit = {}
 ) {
@@ -95,7 +96,8 @@ fun TopAppBar(
         }
         Spacer(modifier = Modifier.height(14.dp))
         ListenModeToggle(
-            isEnabled = isListenModeEnabled,
+            checked = isListenModeChecked,
+            enabled = isListenModeEnabled,
             onChange = onListenModeChange
         )
     }

@@ -28,7 +28,8 @@ import com.pagzone.sonavi.ui.theme.Blue80
 @Composable
 fun ListenModeToggle(
     modifier: Modifier = Modifier,
-    isEnabled: Boolean = false,
+    checked: Boolean = false,
+    enabled: Boolean = false,
     onChange: (Boolean) -> Unit = {}
 ) {
     val gradient = Brush.horizontalGradient(
@@ -65,6 +66,11 @@ fun ListenModeToggle(
                 )
             }
             Switch(
+                checked = checked,
+                onCheckedChange = {
+                    onChange(it)
+                },
+                enabled = enabled,
                 colors = SwitchDefaults.colors(
                     uncheckedThumbColor = Color.White,
                     uncheckedTrackColor = Color.Transparent,
@@ -72,11 +78,7 @@ fun ListenModeToggle(
                     checkedThumbColor = Blue80,
                     checkedTrackColor = Color.White,
                     checkedBorderColor = Color.White
-                ),
-                checked = isEnabled,
-                onCheckedChange = {
-                    onChange(it)
-                }
+                )
             )
         }
     }
