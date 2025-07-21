@@ -41,13 +41,6 @@
                     android:pathPrefix="@string/stop_listening_path"
                     android:scheme="@string/wear_capability" />
             </intent-filter>
-            <intent-filter>
-                <action android:name="com.google.android.gms.wearable." />
-                <data
-                    android:host="*"
-                    android:pathPrefix="@string/stop_listening_path"
-                    android:scheme="@string/wear_capability" />
-            </intent-filter>
         </service>
     </application>
 

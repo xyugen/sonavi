@@ -3,6 +3,7 @@ package com.pagzone.sonavi.data.repository
 import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
+import androidx.core.net.toUri
 import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.wearable.CapabilityClient
@@ -30,6 +31,8 @@ interface ClientDataRepository {
     fun clearData()
     fun clearEvents()
 
+    fun initializeListeners()
+    fun destroyListeners()
     fun startWearableActivity()
     fun startListening()
     fun stopListening()
@@ -50,6 +53,11 @@ object ClientDataRepositoryImpl : ClientDataRepository {
     private val capabilityClient by lazy { Wearable.getCapabilityClient(appContext) }
     private val messageClient by lazy { Wearable.getMessageClient(appContext) }
     private val nodeClient by lazy { Wearable.getNodeClient(appContext) }
+
+    private val capabilityListener =
+        CapabilityClient.OnCapabilityChangedListener { capabilityInfo ->
+            handleCapability(capabilityInfo)
+        }
 
     private val _events = mutableStateListOf<Event>()
     override val events: List<Event> = _events
@@ -96,6 +104,22 @@ object ClientDataRepositoryImpl : ClientDataRepository {
 
     override fun clearEvents() {
         _events.clear()
+    }
+
+    override fun initializeListeners() {
+        Log.d(TAG, "initializeListeners")
+
+        capabilityClient.addListener(
+            capabilityListener,
+            "wear://".toUri(),
+            CapabilityClient.FILTER_REACHABLE
+        )
+    }
+
+    override fun destroyListeners() {
+        Log.d(TAG, "destroyListeners")
+
+        capabilityClient.removeListener(capabilityListener)
     }
 
     override fun startWearableActivity() {
@@ -174,6 +198,7 @@ object ClientDataRepositoryImpl : ClientDataRepository {
 
             Log.d(TAG, "Node connected: ${nodes.first().displayName}")
         } else {
+            toggleListening(false)
             clearData()
 
             Log.d(TAG, "No wearable connected")

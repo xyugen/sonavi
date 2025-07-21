@@ -16,6 +16,7 @@ import dagger.hilt.android.AndroidEntryPoint
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
+
     private val clientDataViewModel: ClientDataViewModel by viewModels()
 
     override fun onCreate(savedInstanceState: Bundle?) {
@@ -45,6 +46,13 @@ class MainActivity : ComponentActivity() {
         super.onStart()
 
         startWearableActivity()
+        ClientDataRepositoryImpl.initializeListeners()
+    }
+
+    override fun onStop() {
+        super.onStop()
+
+        ClientDataRepositoryImpl.destroyListeners()
     }
 
     /**

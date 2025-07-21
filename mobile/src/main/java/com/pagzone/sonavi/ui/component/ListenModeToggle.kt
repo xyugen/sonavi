@@ -32,13 +32,11 @@ fun ListenModeToggle(
     enabled: Boolean = false,
     onChange: (Boolean) -> Unit = {}
 ) {
-    val gradient = Brush.horizontalGradient(
-        listOf(
-            Blue75,
-            Blue50,
-            Blue80
-        )
-    )
+    val colors = listOf(Blue75, Blue50, Blue80).map { color ->
+        if (enabled) color else color.copy(alpha = 0.75f)
+    }
+
+    val gradient = Brush.horizontalGradient(colors)
 
     Surface(
         shape = RoundedCornerShape(14.dp),
