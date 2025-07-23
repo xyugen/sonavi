@@ -20,15 +20,24 @@ fun WearNavGraph(
     stopListening: () -> Unit
 ) {
     val isConnected by viewModel.isConnected.collectAsState()
+    val isListening by viewModel.isListening.collectAsState()
 
     LaunchedEffect(isConnected) {
         Log.d("WearNavGraph", "isConnected changed to: $isConnected")
-        if (!isConnected) {
-            Log.d("WearNavGraph", "is not connected")
-            // Prevent navigating if already on welcome
-            if (navController.currentDestination?.route != "welcome") {
-                navController.popBackStack(route = "welcome", inclusive = false)
-            }
+        val currentRoute = navController.currentDestination?.route
+        if (!isConnected && currentRoute != "welcome") {
+            navController.popBackStack(route = "welcome", inclusive = false)
+
+        }
+    }
+
+    LaunchedEffect(isListening) {
+        Log.d("WearNavGraph", "isListening changed to: $isListening")
+        val currentRoute = navController.currentDestination?.route
+        if (isListening && currentRoute != "listening") {
+            navController.navigate("listening")
+        } else if (!isListening && currentRoute == "listening") {
+            navController.popBackStack(route = "welcome", inclusive = false)
         }
     }
 

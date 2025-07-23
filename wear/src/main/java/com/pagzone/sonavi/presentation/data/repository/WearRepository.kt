@@ -5,6 +5,7 @@ import android.util.Log
 import androidx.core.net.toUri
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.CapabilityInfo
+import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable.getCapabilityClient
@@ -50,6 +51,10 @@ object WearRepositoryImpl : WearRepository {
         CapabilityClient.OnCapabilityChangedListener { capabilityInfo ->
             handleCapability(capabilityInfo)
         }
+    private val dataListener =
+        DataClient.OnDataChangedListener { dataEventBuffer ->
+            handleDataChange(dataEventBuffer)
+        }
 
     private val _isConnected: MutableStateFlow<Boolean> = MutableStateFlow(false)
     private val _nodeId: MutableStateFlow<String?> = MutableStateFlow(null)
@@ -88,10 +93,12 @@ object WearRepositoryImpl : WearRepository {
             "wear://".toUri(),
             CapabilityClient.FILTER_REACHABLE
         )
+        dataClient.addListener(dataListener)
     }
 
     override fun destroyListeners() {
         capabilityClient.removeListener(capabilityListener)
+        dataClient.removeListener(dataListener)
     }
 
     override fun startWearableActivity() {

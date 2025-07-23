@@ -8,6 +8,7 @@ import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.CapabilityInfo
+import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.MessageEvent
@@ -52,11 +53,15 @@ object ClientDataRepositoryImpl : ClientDataRepository {
 
     private val capabilityClient by lazy { Wearable.getCapabilityClient(appContext) }
     private val messageClient by lazy { Wearable.getMessageClient(appContext) }
-    private val nodeClient by lazy { Wearable.getNodeClient(appContext) }
+    private val dataClient by lazy { Wearable.getDataClient(appContext) }
 
     private val capabilityListener =
         CapabilityClient.OnCapabilityChangedListener { capabilityInfo ->
             handleCapability(capabilityInfo)
+        }
+    private val dataListener =
+        DataClient.OnDataChangedListener { dataEventBuffer ->
+            handleDataChange(dataEventBuffer)
         }
 
     private val _events = mutableStateListOf<Event>()
@@ -114,12 +119,14 @@ object ClientDataRepositoryImpl : ClientDataRepository {
             "wear://".toUri(),
             CapabilityClient.FILTER_REACHABLE
         )
+        dataClient.addListener(dataListener)
     }
 
     override fun destroyListeners() {
         Log.d(TAG, "destroyListeners")
 
         capabilityClient.removeListener(capabilityListener)
+        dataClient.removeListener(dataListener)
     }
 
     override fun startWearableActivity() {

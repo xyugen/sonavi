@@ -9,9 +9,13 @@ import com.google.android.gms.wearable.WearableListenerService
 import com.pagzone.sonavi.presentation.data.repository.WearRepositoryImpl
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 
 class DataLayerListenerService : WearableListenerService() {
+    private val serviceJob = SupervisorJob()
+    private val serviceScope = CoroutineScope(serviceJob + Dispatchers.Default)
+
     override fun onCreate() {
         Log.d(TAG, "onCreate")
         super.onCreate()
@@ -30,13 +34,17 @@ class DataLayerListenerService : WearableListenerService() {
     override fun onDataChanged(dataEventBuffer: DataEventBuffer) {
         Log.d(TAG, "onDataChanged")
         super.onDataChanged(dataEventBuffer)
+
+        serviceScope.launch {
+            WearRepositoryImpl.handleDataChange(dataEventBuffer)
+        }
     }
 
     override fun onMessageReceived(messageEvent: MessageEvent) {
         Log.d(TAG, "onMessageReceived")
         super.onMessageReceived(messageEvent)
 
-        CoroutineScope(Dispatchers.IO).launch {
+        serviceScope.launch {
             WearRepositoryImpl.handleMessage(messageEvent)
         }
     }
@@ -45,7 +53,7 @@ class DataLayerListenerService : WearableListenerService() {
         Log.d(TAG, "onCapabilityChanged")
         super.onCapabilityChanged(capabilityInfo)
 
-        CoroutineScope(Dispatchers.IO).launch {
+        serviceScope.launch {
             WearRepositoryImpl.handleCapability(capabilityInfo)
         }
     }
