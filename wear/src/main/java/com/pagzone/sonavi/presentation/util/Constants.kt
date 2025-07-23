@@ -6,6 +6,6 @@ class Constants {
         const val STOP_LISTENING_PATH = "/stop_listening"
     }
     object Capabilities {
-        const val WEAR_CAPABILITY = "wear_capability"
+        const val WEAR_CAPABILITY = "wear"
     }
 }
