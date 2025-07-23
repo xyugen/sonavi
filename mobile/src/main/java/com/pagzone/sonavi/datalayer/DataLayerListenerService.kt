@@ -2,6 +2,8 @@ package com.pagzone.sonavi.datalayer
 
 import android.util.Log
 import com.google.android.gms.wearable.CapabilityInfo
+import com.google.android.gms.wearable.Channel
+import com.google.android.gms.wearable.ChannelClient
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.WearableListenerService
@@ -21,6 +23,14 @@ class DataLayerListenerService : WearableListenerService() {
 
     override fun onDestroy() {
         super.onDestroy()
+    }
+
+    override fun onChannelOpened(channel: Channel) {
+        super.onChannelOpened(channel)
+
+        serviceScope.launch {
+            ClientDataRepositoryImpl.handleChannelOpened(channel as ChannelClient.Channel)
+        }
     }
 
     override fun onDataChanged(dataEventBuffer: DataEventBuffer) {

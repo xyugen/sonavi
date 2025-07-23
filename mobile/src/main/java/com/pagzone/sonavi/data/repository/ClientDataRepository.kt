@@ -8,6 +8,7 @@ import com.google.android.gms.common.ConnectionResult
 import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.CapabilityInfo
+import com.google.android.gms.wearable.ChannelClient
 import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEvent
 import com.google.android.gms.wearable.DataEventBuffer
@@ -18,8 +19,12 @@ import com.pagzone.sonavi.util.Constants.Capabilities.WEAR_CAPABILITY
 import com.pagzone.sonavi.util.Constants.MessagePaths.START_LISTENING_PATH
 import com.pagzone.sonavi.util.Constants.MessagePaths.STOP_LISTENING_PATH
 import com.pagzone.sonavi.viewmodel.Event
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.launch
+import kotlinx.coroutines.tasks.await
 
 interface ClientDataRepository {
     val isConnected: StateFlow<Boolean>
@@ -40,6 +45,7 @@ interface ClientDataRepository {
     fun startWearableActivity()
     fun startListening()
     fun stopListening()
+    suspend fun handleChannelOpened(channel: ChannelClient.Channel)
     suspend fun handleMessage(messageEvent: MessageEvent)
     fun handleDataChange(dataEvents: DataEventBuffer)
     fun handleCapability(capabilityInfo: CapabilityInfo)
@@ -53,6 +59,7 @@ object ClientDataRepositoryImpl : ClientDataRepository {
     private val capabilityClient by lazy { Wearable.getCapabilityClient(appContext) }
     private val messageClient by lazy { Wearable.getMessageClient(appContext) }
     private val dataClient by lazy { Wearable.getDataClient(appContext) }
+    private val channelClient by lazy { Wearable.getChannelClient(appContext) }
 
     private val capabilityListener =
         CapabilityClient.OnCapabilityChangedListener { capabilityInfo ->
@@ -119,6 +126,19 @@ object ClientDataRepositoryImpl : ClientDataRepository {
             CapabilityClient.FILTER_REACHABLE
         )
         dataClient.addListener(dataListener)
+
+        // TODO: Could improve implementation
+        channelClient.registerChannelCallback(
+            object : ChannelClient.ChannelCallback() {
+                override fun onChannelOpened(channel: ChannelClient.Channel) {
+                    super.onChannelOpened(channel)
+
+                    CoroutineScope(Dispatchers.IO).launch {
+                        handleChannelOpened(channel)
+                    }
+                }
+            }
+        )
     }
 
     override fun destroyListeners() {
@@ -168,6 +188,22 @@ object ClientDataRepositoryImpl : ClientDataRepository {
                     Log.e(TAG, "Failed to send $STOP_LISTENING_PATH", it)
                 }
         } ?: Log.e(TAG, "Node ID is null, cannot stop listening")
+    }
+
+    override suspend fun handleChannelOpened(channel: ChannelClient.Channel) {
+        val inputStream = channelClient.getInputStream(channel).await()
+
+        inputStream.use { stream ->
+            val data = stream.readBytes()
+            val message = String(data, Charsets.UTF_8)
+
+            _events.add(
+                Event(
+                    title = R.string.message_from_watch,
+                    text = message
+                )
+            )
+        }
     }
 
     override suspend fun handleMessage(messageEvent: MessageEvent) {
