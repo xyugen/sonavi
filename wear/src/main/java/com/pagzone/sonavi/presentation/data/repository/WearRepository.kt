@@ -1,6 +1,7 @@
 package com.pagzone.sonavi.presentation.data.repository
 
 import android.content.Context
+import android.content.Intent
 import android.util.Log
 import androidx.core.net.toUri
 import com.google.android.gms.wearable.CapabilityClient
@@ -12,6 +13,7 @@ import com.google.android.gms.wearable.Wearable.getCapabilityClient
 import com.google.android.gms.wearable.Wearable.getChannelClient
 import com.google.android.gms.wearable.Wearable.getDataClient
 import com.google.android.gms.wearable.Wearable.getMessageClient
+import com.pagzone.sonavi.presentation.util.AudioStreamingService
 import com.pagzone.sonavi.presentation.util.Constants.Capabilities.WEAR_CAPABILITY
 import com.pagzone.sonavi.presentation.util.Constants.MessagePaths.START_LISTENING_PATH
 import com.pagzone.sonavi.presentation.util.Constants.MessagePaths.STOP_LISTENING_PATH
@@ -123,6 +125,12 @@ object WearRepositoryImpl : WearRepository {
                     Log.d(TAG, "Message sent: $START_LISTENING_PATH")
                     toggleListening(true)
 
+                    Log.d(TAG, "Starting audio streaming service")
+                    val intent = Intent(appContext, AudioStreamingService::class.java).apply {
+                        action = AudioStreamingService.ACTION_START
+                        putExtra(AudioStreamingService.EXTRA_NODE_ID, nodeId.value.toString())
+                    }
+                    appContext.startService(intent)
 //                    CoroutineScope(Dispatchers.IO).launch {
 //                        val channel =
 //                            channelClient
@@ -156,6 +164,11 @@ object WearRepositoryImpl : WearRepository {
                 .addOnSuccessListener {
                     Log.d(TAG, "Message sent: $STOP_LISTENING_PATH")
                     toggleListening(false)
+
+                    val intent = Intent(appContext, AudioStreamingService::class.java).apply {
+                        action = AudioStreamingService.ACTION_STOP
+                    }
+                    appContext.startService(intent)
                 }
                 .addOnFailureListener {
                     Log.e(TAG, "Failed to send $STOP_LISTENING_PATH", it)

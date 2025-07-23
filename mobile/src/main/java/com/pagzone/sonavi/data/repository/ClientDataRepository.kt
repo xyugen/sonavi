@@ -1,6 +1,7 @@
 package com.pagzone.sonavi.data.repository
 
 import android.content.Context
+import android.os.Environment
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.core.net.toUri
@@ -16,8 +17,10 @@ import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
 import com.pagzone.sonavi.R
 import com.pagzone.sonavi.util.Constants.Capabilities.WEAR_CAPABILITY
+import com.pagzone.sonavi.util.Constants.MessagePaths.MIC_AUDIO_PATH
 import com.pagzone.sonavi.util.Constants.MessagePaths.START_LISTENING_PATH
 import com.pagzone.sonavi.util.Constants.MessagePaths.STOP_LISTENING_PATH
+import com.pagzone.sonavi.util.Helper.Companion.convertPcmToWav
 import com.pagzone.sonavi.viewmodel.Event
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -25,6 +28,9 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import java.io.File
+import java.io.FileOutputStream
+import java.io.InputStream
 
 interface ClientDataRepository {
     val isConnected: StateFlow<Boolean>
@@ -131,6 +137,7 @@ object ClientDataRepositoryImpl : ClientDataRepository {
         channelClient.registerChannelCallback(
             object : ChannelClient.ChannelCallback() {
                 override fun onChannelOpened(channel: ChannelClient.Channel) {
+                    Log.d(TAG, "onChannelOpened")
                     super.onChannelOpened(channel)
 
                     CoroutineScope(Dispatchers.IO).launch {
@@ -191,18 +198,15 @@ object ClientDataRepositoryImpl : ClientDataRepository {
     }
 
     override suspend fun handleChannelOpened(channel: ChannelClient.Channel) {
-        val inputStream = channelClient.getInputStream(channel).await()
+        when (channel.path) {
+            MIC_AUDIO_PATH -> {
+                CoroutineScope(Dispatchers.IO).launch {
+                    val inputStream = channelClient.getInputStream(channel).await()
+                    handleAudioStream(inputStream)
 
-        inputStream.use { stream ->
-            val data = stream.readBytes()
-            val message = String(data, Charsets.UTF_8)
-
-            _events.add(
-                Event(
-                    title = R.string.message_from_watch,
-                    text = message
-                )
-            )
+                    Log.d(TAG, "Audio stream closed")
+                }
+            }
         }
     }
 
@@ -245,6 +249,43 @@ object ClientDataRepositoryImpl : ClientDataRepository {
 
             Log.d(TAG, "No wearable connected")
         }
+    }
+
+    private fun handleAudioStream(inputStream: InputStream) {
+        val fileName = "streamed_audio.pcm"
+        val externalDir = File(
+            Environment.getExternalStoragePublicDirectory(Environment.DIRECTORY_DOWNLOADS),
+            "Sonavi"
+        )
+
+        if (!externalDir.exists()) {
+            externalDir.mkdirs()
+        }
+
+        val buffer = ByteArray(1024)
+        val pcmFile = File(externalDir, fileName)
+        val wavFile = File(externalDir, fileName.replace(".pcm", ".wav"))
+
+        FileOutputStream(pcmFile).use { outputStream ->
+            while (true) {
+                val read = inputStream.read(buffer)
+                if (read == -1) break
+                outputStream.write(buffer, 0, read)
+            }
+        }
+
+        Log.d(TAG, "Saved PCM: ${pcmFile.absolutePath}")
+
+        // ✅ Convert PCM to WAV
+        convertPcmToWav(
+            pcmFile = pcmFile,
+            wavFile = wavFile,
+            sampleRate = 16000,   // Make sure this matches your recorder settings
+            channels = 1,
+            bitsPerSample = 16
+        )
+
+        Log.d(TAG, "Converted WAV: ${wavFile.absolutePath}")
     }
 
     private fun isGooglePlayServicesAvailable(): Boolean {

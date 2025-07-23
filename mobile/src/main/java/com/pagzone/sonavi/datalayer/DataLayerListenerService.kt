@@ -26,6 +26,7 @@ class DataLayerListenerService : WearableListenerService() {
     }
 
     override fun onChannelOpened(channel: Channel) {
+        Log.d(TAG, "onChannelOpened")
         super.onChannelOpened(channel)
 
         serviceScope.launch {
