@@ -14,6 +14,9 @@ import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
 import com.pagzone.sonavi.R
+import com.pagzone.sonavi.util.Constants.Capabilities.WEAR_CAPABILITY
+import com.pagzone.sonavi.util.Constants.MessagePaths.START_LISTENING_PATH
+import com.pagzone.sonavi.util.Constants.MessagePaths.STOP_LISTENING_PATH
 import com.pagzone.sonavi.viewmodel.Event
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
@@ -44,10 +47,6 @@ interface ClientDataRepository {
 
 object ClientDataRepositoryImpl : ClientDataRepository {
     private const val TAG = "ClientDataRepository"
-
-    private const val START_LISTENING_PATH = "/start_listening"
-    private const val STOP_LISTENING_PATH = "/stop_listening"
-    private const val WEAR_CAPABILITY = "wear"
 
     private lateinit var appContext: Context
 
@@ -163,7 +162,7 @@ object ClientDataRepositoryImpl : ClientDataRepository {
             messageClient.sendMessage(id, STOP_LISTENING_PATH, null)
                 .addOnSuccessListener {
                     Log.d(TAG, "Message sent: $STOP_LISTENING_PATH")
-                    toggleListening(false)
+//                    toggleListening(false)
                 }
                 .addOnFailureListener {
                     Log.e(TAG, "Failed to send $STOP_LISTENING_PATH", it)

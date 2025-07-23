@@ -11,6 +11,9 @@ import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable.getCapabilityClient
 import com.google.android.gms.wearable.Wearable.getDataClient
 import com.google.android.gms.wearable.Wearable.getMessageClient
+import com.pagzone.sonavi.presentation.util.Constants.Capabilities.WEAR_CAPABILITY
+import com.pagzone.sonavi.presentation.util.Constants.MessagePaths.START_LISTENING_PATH
+import com.pagzone.sonavi.presentation.util.Constants.MessagePaths.STOP_LISTENING_PATH
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 
@@ -36,10 +39,6 @@ interface WearRepository {
 
 object WearRepositoryImpl : WearRepository {
     private const val TAG = "WearRepository"
-
-    private const val WEAR_CAPABILITY = "wear"
-    private const val START_LISTENING_PATH = "/start_listening"
-    private const val STOP_LISTENING_PATH = "/stop_listening"
 
     private lateinit var appContext: Context
 
@@ -147,8 +146,8 @@ object WearRepositoryImpl : WearRepository {
         Log.d(TAG, "handleMessage: ${messageEvent.path}")
 
         when (messageEvent.path) {
-            "/start_listening" -> toggleListening(true)
-            "/stop_listening" -> toggleListening(false)
+            "/start_listening" -> startListening()
+            "/stop_listening" -> stopListening()
         }
     }
 

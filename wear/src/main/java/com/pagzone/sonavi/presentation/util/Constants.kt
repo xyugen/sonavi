@@ -1,4 +1,4 @@
-package com.pagzone.sonavi.util
+package com.pagzone.sonavi.presentation.util
 
 class Constants {
     object MessagePaths {
@@ -6,6 +6,6 @@ class Constants {
         const val STOP_LISTENING_PATH = "/stop_listening"
     }
     object Capabilities {
-        const val WEAR_CAPABILITY = "wear"
+        const val WEAR_CAPABILITY = "wear_capability"
     }
 }
