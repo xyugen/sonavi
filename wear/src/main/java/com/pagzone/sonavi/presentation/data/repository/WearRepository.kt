@@ -10,7 +10,6 @@ import com.google.android.gms.wearable.DataClient
 import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable.getCapabilityClient
-import com.google.android.gms.wearable.Wearable.getChannelClient
 import com.google.android.gms.wearable.Wearable.getDataClient
 import com.google.android.gms.wearable.Wearable.getMessageClient
 import com.pagzone.sonavi.presentation.util.AudioStreamingService
@@ -45,7 +44,7 @@ object WearRepositoryImpl : WearRepository {
 
     private lateinit var appContext: Context
 
-    private val channelClient by lazy { getChannelClient(appContext) }
+    //    private val channelClient by lazy { getChannelClient(appContext) }
     private val dataClient by lazy { getDataClient(appContext) }
     private val messageClient by lazy { getMessageClient(appContext) }
     private val capabilityClient by lazy { getCapabilityClient(appContext) }
@@ -124,31 +123,7 @@ object WearRepositoryImpl : WearRepository {
                 .addOnSuccessListener {
                     Log.d(TAG, "Message sent: $START_LISTENING_PATH")
                     toggleListening(true)
-
-                    Log.d(TAG, "Starting audio streaming service")
-                    val intent = Intent(appContext, AudioStreamingService::class.java).apply {
-                        action = AudioStreamingService.ACTION_START
-                        putExtra(AudioStreamingService.EXTRA_NODE_ID, nodeId.value.toString())
-                    }
-                    appContext.startService(intent)
-//                    CoroutineScope(Dispatchers.IO).launch {
-//                        val channel =
-//                            channelClient
-//                                .openChannel(
-//                                    nodeId.value.toString(),
-//                                    MIC_AUDIO_PATH
-//                                )
-//                                .await()
-//
-//                        val outputStream = channelClient.getOutputStream(channel).await()
-//
-//                        Log.d(TAG, "outputStream: $outputStream")
-//
-//                        // Send String data to output stream
-//                        outputStream.write("Hello, World!".toByteArray())
-//                        outputStream.flush()
-//                        outputStream.close()
-//                    }
+                    startAudioStream()
                 }
                 .addOnFailureListener {
                     Log.e(TAG, "Failed to send $START_LISTENING_PATH", it)
@@ -164,11 +139,7 @@ object WearRepositoryImpl : WearRepository {
                 .addOnSuccessListener {
                     Log.d(TAG, "Message sent: $STOP_LISTENING_PATH")
                     toggleListening(false)
-
-                    val intent = Intent(appContext, AudioStreamingService::class.java).apply {
-                        action = AudioStreamingService.ACTION_STOP
-                    }
-                    appContext.startService(intent)
+                    stopAudioStream()
                 }
                 .addOnFailureListener {
                     Log.e(TAG, "Failed to send $STOP_LISTENING_PATH", it)
@@ -202,6 +173,23 @@ object WearRepositoryImpl : WearRepository {
 
             Log.d(TAG, "No nodes connected")
         }
+    }
+
+    private fun startAudioStream() {
+        Log.d(TAG, "Starting audio streaming service")
+        val intent = Intent(appContext, AudioStreamingService::class.java).apply {
+            action = AudioStreamingService.ACTION_START
+            putExtra(AudioStreamingService.EXTRA_NODE_ID, nodeId.value.toString())
+        }
+        appContext.startService(intent)
+    }
+
+    private fun stopAudioStream() {
+        Log.d(TAG, "Stopping audio streaming service")
+        val intent = Intent(appContext, AudioStreamingService::class.java).apply {
+            action = AudioStreamingService.ACTION_STOP
+        }
+        appContext.startService(intent)
     }
 }
 

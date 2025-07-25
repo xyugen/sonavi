@@ -3,17 +3,18 @@ package com.pagzone.sonavi.util
 import java.io.File
 import java.io.FileOutputStream
 
-class Helper {
+class AudioUtils {
     companion object {
         fun convertPcmToWav(
             pcmFile: File,
-            wavFile: File,
-            sampleRate: Int = 16000,
-            channels: Int = 1,
-            bitsPerSample: Int = 16
+            wavFile: File
         ) {
             val pcmData = pcmFile.readBytes()
+            val sampleRate = 16000
+            val bitsPerSample = 16
+            val channels = 1
             val byteRate = sampleRate * channels * bitsPerSample / 8
+
             val totalDataLen = 36 + pcmData.size
             val totalAudioLen = pcmData.size
 

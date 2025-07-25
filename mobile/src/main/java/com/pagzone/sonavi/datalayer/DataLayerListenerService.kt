@@ -23,6 +23,7 @@ class DataLayerListenerService : WearableListenerService() {
 
     override fun onDestroy() {
         super.onDestroy()
+        serviceJob.cancel()
     }
 
     override fun onChannelOpened(channel: Channel) {
