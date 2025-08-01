@@ -1,6 +1,7 @@
 package com.pagzone.sonavi
 
 import android.os.Bundle
+import android.util.Log
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
@@ -11,6 +12,7 @@ import com.pagzone.sonavi.data.repository.ClientDataRepositoryImpl
 import com.pagzone.sonavi.ui.navigation.NavigationManager
 import com.pagzone.sonavi.ui.screen.MainScreen
 import com.pagzone.sonavi.ui.theme.SonaviTheme
+import com.pagzone.sonavi.util.ModelUtils
 import com.pagzone.sonavi.viewmodel.ClientDataViewModel
 import dagger.hilt.android.AndroidEntryPoint
 
@@ -66,6 +68,8 @@ class MainActivity : ComponentActivity() {
 
     private fun startWearableActivity() {
         clientDataViewModel.startWearableActivity()
+        val labels = ModelUtils.loadYamnetLabels(this)
+        Log.d("MainActivity", "labels: $labels")
     }
 
     private fun startListening() {

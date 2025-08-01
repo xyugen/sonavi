@@ -1,1 +1,4 @@
 /build
+yamnet_class_map.csv
+yamnet_labels.txt
+yamnnet.tflite

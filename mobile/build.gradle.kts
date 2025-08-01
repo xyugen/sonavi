@@ -63,4 +63,10 @@ dependencies {
     implementation(libs.play.services.wearable)
     implementation(libs.kotlinx.coroutines.play.services)
     implementation(libs.androidx.hilt.navigation.fragment)
+
+    // LiteRT
+    // https://mvnrepository.com/artifact/com.google.ai.edge.litert/litert
+    implementation(libs.litert)
+    // https://mvnrepository.com/artifact/com.google.ai.edge.litert/litert-support
+    implementation(libs.litert.support)
 }

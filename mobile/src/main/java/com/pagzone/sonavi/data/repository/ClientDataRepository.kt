@@ -4,8 +4,6 @@ import android.content.Context
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.core.net.toUri
-import com.google.android.gms.common.ConnectionResult
-import com.google.android.gms.common.GoogleApiAvailability
 import com.google.android.gms.wearable.CapabilityClient
 import com.google.android.gms.wearable.CapabilityInfo
 import com.google.android.gms.wearable.ChannelClient
@@ -20,15 +18,19 @@ import com.pagzone.sonavi.util.Constants.Capabilities.WEAR_CAPABILITY
 import com.pagzone.sonavi.util.Constants.MessagePaths.MIC_AUDIO_PATH
 import com.pagzone.sonavi.util.Constants.MessagePaths.START_LISTENING_PATH
 import com.pagzone.sonavi.util.Constants.MessagePaths.STOP_LISTENING_PATH
+import com.pagzone.sonavi.util.YamnetClassifier
 import com.pagzone.sonavi.viewmodel.Event
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.coroutines.isActive
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
 import java.io.InputStream
+import java.nio.ByteBuffer
+import java.nio.ByteOrder
 
 interface ClientDataRepository {
     val isConnected: StateFlow<Boolean>
@@ -223,7 +225,46 @@ object ClientDataRepositoryImpl : ClientDataRepository {
             MIC_AUDIO_PATH -> {
                 scope.launch {
                     val inputStream = channelClient.getInputStream(channel).await()
-                    handleAudioStream(inputStream)
+//                    handleAudioStream(inputStream)
+
+                    val bufferSize = 1024  // or 2048 depending on your latency preference
+                    val buffer = ByteArray(bufferSize)
+                    val shortBuffer = ShortArray(bufferSize / 2) // since 16-bit PCM
+                    val floatBuffer = FloatArray(15600) // ~1s of 16kHz mono audio
+                    var floatBufferOffset = 0
+
+                    val classifier = YamnetClassifier(appContext)
+
+                    while (isActive) {
+                        val bytesRead = inputStream.read(buffer)
+                        if (bytesRead <= 0) break
+
+                        // Convert bytes to shorts
+                        ByteBuffer.wrap(buffer, 0, bytesRead)
+                            .order(ByteOrder.LITTLE_ENDIAN)
+                            .asShortBuffer()
+                            .get(shortBuffer, 0, bytesRead / 2)
+
+                        // Normalize shorts to floats [-1.0, 1.0]
+                        for (i in 0 until bytesRead / 2) {
+                            if (floatBufferOffset < floatBuffer.size) {
+                                floatBuffer[floatBufferOffset++] = shortBuffer[i] / 32768.0f
+                            }
+                        }
+
+                        // Once we have 1s worth of audio (YAMNet requires 15600 samples)
+                        if (floatBufferOffset >= floatBuffer.size) {
+                            val result = classifier.classify(floatBuffer)
+                            Log.d(
+                                "YamnetResult",
+                                "Label: ${result.first}, Confidence: ${result.second}"
+                            )
+
+                            floatBufferOffset = 0 // reset buffer
+                        }
+                    }
+
+                    classifier.close()
 
                     Log.d(TAG, "Audio stream closed")
                 }
