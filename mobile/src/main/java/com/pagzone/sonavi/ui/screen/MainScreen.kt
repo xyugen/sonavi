@@ -27,10 +27,8 @@ import com.pagzone.sonavi.viewmodel.ClientDataViewModel
 @Preview(showSystemUi = true)
 @Composable
 fun MainScreen(
-    modifier: Modifier = Modifier,
     navController: NavHostController = rememberNavController(),
     viewModel: ClientDataViewModel = viewModel(),
-    onStartWearableActivityClick: () -> Unit = {},
     onStartListening: () -> Unit = {},
     onStopListening: () -> Unit = {}
 ) {

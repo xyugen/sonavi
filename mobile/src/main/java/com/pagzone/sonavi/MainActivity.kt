@@ -12,6 +12,7 @@ import com.pagzone.sonavi.data.repository.ClientDataRepositoryImpl
 import com.pagzone.sonavi.ui.navigation.NavigationManager
 import com.pagzone.sonavi.ui.screen.MainScreen
 import com.pagzone.sonavi.ui.theme.SonaviTheme
+import com.pagzone.sonavi.util.AudioClassifierService
 import com.pagzone.sonavi.util.ModelUtils
 import com.pagzone.sonavi.viewmodel.ClientDataViewModel
 import dagger.hilt.android.AndroidEntryPoint
@@ -26,6 +27,7 @@ class MainActivity : ComponentActivity() {
         enableEdgeToEdge()
 
         ClientDataRepositoryImpl.init(this)
+        AudioClassifierService.init(this)
 
         setContent {
             SonaviTheme {
@@ -36,7 +38,6 @@ class MainActivity : ComponentActivity() {
 
                 MainScreen(
                     navController = navController,
-                    onStartWearableActivityClick = ::startWearableActivity,
                     onStartListening = ::startListening,
                     onStopListening = ::stopListening
                 )
