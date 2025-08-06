@@ -1,12 +1,16 @@
 package com.pagzone.sonavi.presentation.util
 
 import android.Manifest
+import android.R.drawable.presence_audio_online
+import android.app.NotificationChannel
+import android.app.NotificationManager
 import android.content.Intent
 import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
 import androidx.annotation.RequiresPermission
+import androidx.core.app.NotificationCompat
 import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.wearable.ChannelClient
@@ -37,6 +41,15 @@ class AudioStreamingService : LifecycleService() {
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     override fun onCreate() {
         super.onCreate()
+        createNotificationChannel()
+        val notification = NotificationCompat.Builder(this, NOTIFICATION_CHANNEL_ID)
+            .setContentTitle("Sound Detection Active")
+            .setContentText("Listening for sounds")
+            .setSmallIcon(presence_audio_online)
+            .setOngoing(true)
+            .build()
+
+        startForeground(1, notification)
 
         audioRecord = AudioRecord(
             MediaRecorder.AudioSource.MIC,
@@ -109,10 +122,28 @@ class AudioStreamingService : LifecycleService() {
         isRecording = false
         audioRecord.stop()
         channelClient.close(channel)
+
+//        stopForeground(STOP_FOREGROUND_REMOVE)
+    }
+
+    private fun createNotificationChannel() {
+        val serviceChannel = NotificationChannel(
+            NOTIFICATION_CHANNEL_ID, // same ID as used in NotificationCompat.Builder
+            "Audio Streaming", // human-readable name
+            NotificationManager.IMPORTANCE_DEFAULT
+        )
+        serviceChannel.enableLights(false)
+        serviceChannel.enableVibration(false)
+        serviceChannel.setSound(null, null)
+
+        val manager = getSystemService(NotificationManager::class.java)
+        manager.createNotificationChannel(serviceChannel)
     }
 
     companion object {
         private const val TAG = "AudioStreamingService"
+
+        const val NOTIFICATION_CHANNEL_ID = "streaming_channel"
 
         const val ACTION_START = "START_STREAM"
         const val ACTION_STOP = "STOP_STREAM"
