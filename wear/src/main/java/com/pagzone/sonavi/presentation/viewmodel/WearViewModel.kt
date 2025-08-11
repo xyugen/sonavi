@@ -43,4 +43,10 @@ class WearViewModel(
             repository.stopListening()
         }
     }
+
+    fun toggleListening(enable: Boolean) {
+        viewModelScope.launch {
+            repository.toggleListening(enable)
+        }
+    }
 }

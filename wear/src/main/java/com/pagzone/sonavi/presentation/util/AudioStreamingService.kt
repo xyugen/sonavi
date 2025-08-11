@@ -85,38 +85,41 @@ class AudioStreamingService : LifecycleService() {
 
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     fun startStreaming(nodeId: String) {
+        isRecording = true
         streamingJob = lifecycleScope.launch(Dispatchers.IO) {
             try {
                 channelClient = Wearable.getChannelClient(this@AudioStreamingService)
                 channel = channelClient.openChannel(nodeId, MIC_AUDIO_PATH).await()
                 outputStream = channelClient.getOutputStream(channel).await()
 
-                audioRecord = AudioRecord(
-                    MediaRecorder.AudioSource.MIC,
-                    16000,
-                    AudioFormat.CHANNEL_IN_MONO,
-                    AudioFormat.ENCODING_PCM_16BIT,
-                    bufferSize
-                )
-                val buffer = ByteArray(bufferSize)
                 audioRecord.startRecording()
+                val buffer = ByteArray(bufferSize)
 
-                while (isActive) {
+                while (isRecording && isActive) {
                     val read = audioRecord.read(buffer, 0, buffer.size)
                     if (read > 0) {
-                        outputStream?.write(buffer, 0, read)
-                        outputStream?.flush()
+                        try {
+                            outputStream?.write(buffer, 0, read)
+                            outputStream?.flush()
+                        } catch (e: IOException) {
+                            Log.e(TAG, "Output stream failed, stopping", e)
+                            // Stop gracefully if channel closes
+                            stopStreaming(channelClient, channel)
+                            break
+                        }
                     }
                 }
             } catch (e: IOException) {
-                Log.e(TAG, "Streaming failed", e)
-
-                val viewModel = WearViewModel()
-                viewModel.stopListening()
-                channelClient.close(channel)
+                Log.e(TAG, "Streaming setup failed", e)
             } finally {
                 Log.d(TAG, "Cleaning up audio stream")
-                outputStream?.close()
+                try {
+                    outputStream?.close()
+
+                    val viewModel = WearViewModel()
+                    viewModel.toggleListening(false)
+                } catch (_: IOException) {
+                }
                 outputStream = null
                 audioRecord.release()
             }

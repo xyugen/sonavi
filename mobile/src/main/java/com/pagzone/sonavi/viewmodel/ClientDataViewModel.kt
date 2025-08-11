@@ -52,6 +52,8 @@ class ClientDataViewModel @Inject constructor(
             repository.stopListening()
         }
     }
+
+    fun toggleListening(enable: Boolean) = repository.toggleListening(enable)
 }
 
 /**
