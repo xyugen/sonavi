@@ -16,6 +16,7 @@ import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.wearable.ChannelClient
 import com.google.android.gms.wearable.Wearable
 import com.pagzone.sonavi.presentation.util.Constants.MessagePaths.MIC_AUDIO_PATH
+import com.pagzone.sonavi.presentation.viewmodel.WearViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
@@ -101,7 +102,7 @@ class AudioStreamingService : LifecycleService() {
                 audioRecord.startRecording()
 
                 while (isActive) {
-                    val read = audioRecord.read(buffer, 0, buffer.size) ?: 0
+                    val read = audioRecord.read(buffer, 0, buffer.size)
                     if (read > 0) {
                         outputStream?.write(buffer, 0, read)
                         outputStream?.flush()
@@ -109,6 +110,10 @@ class AudioStreamingService : LifecycleService() {
                 }
             } catch (e: IOException) {
                 Log.e(TAG, "Streaming failed", e)
+
+                val viewModel = WearViewModel()
+                viewModel.stopListening()
+                channelClient.close(channel)
             } finally {
                 Log.d(TAG, "Cleaning up audio stream")
                 outputStream?.close()

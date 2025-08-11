@@ -45,18 +45,19 @@ object AudioClassifierService {
 
                 if (offset >= floatBuffer.size) {
                     val (label, confidence) = classifier.classify(floatBuffer)
-                    val result = ClassificationResult(label, confidence)
-
                     if (confidence > 0.7f)
-                        ClassificationResultRepositoryImpl.addResult(result)
-
+                        ClassificationResultRepositoryImpl.addResult(
+                            ClassificationResult(label, confidence)
+                        )
                     Log.d("Yamnet", "Label: $label, Conf: $confidence")
-
                     offset = 0
                 }
             }
-
-            classifier.close()
+            // No classifier.close() here
         }
+    }
+
+    fun shutdown() {
+        classifier.close()
     }
 }
