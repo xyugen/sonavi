@@ -2,50 +2,61 @@ package com.pagzone.sonavi.util
 
 import android.content.Context
 import org.tensorflow.lite.Interpreter
-import java.nio.ByteBuffer
+import java.io.FileInputStream
+import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
 
 class YamnetClassifier(context: Context) {
+    private val tflite: Interpreter
     private val labels: List<String>
-    private val interpreter: Interpreter
 
     init {
-        // Load labels
-        labels = context.assets.open("yamnet_labels.txt").bufferedReader().readLines()
-
-        // Load TFLite model
-        val model = loadModelFile(context, "yamnnet.tflite")
-        interpreter = Interpreter(model)
+        val options = Interpreter.Options()
+        tflite = Interpreter(loadModelFile(context, "yamnnet.tflite"), options)
+        labels = loadLabels(context, "yamnet_labels.txt") // 521 labels
     }
 
-    private fun loadModelFile(context: Context, filename: String): ByteBuffer {
+    private fun loadModelFile(context: Context, filename: String): MappedByteBuffer {
         val fileDescriptor = context.assets.openFd(filename)
-        val inputStream = fileDescriptor.createInputStream()
+        val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
         val fileChannel = inputStream.channel
-        val startOffset = fileDescriptor.startOffset
-        val declaredLength = fileDescriptor.declaredLength
-        return fileChannel.map(FileChannel.MapMode.READ_ONLY, startOffset, declaredLength)
+        return fileChannel.map(
+            FileChannel.MapMode.READ_ONLY,
+            fileDescriptor.startOffset,
+            fileDescriptor.declaredLength
+        )
+    }
+
+    private fun mergeScores(
+        scores: FloatArray,
+        labels: List<String>,
+        mergeMap: Map<String, List<String>>
+    ): Map<String, Float> {
+        val result = mutableMapOf<String, Float>()
+
+        for ((newLabel, group) in mergeMap) {
+            val indices = group.mapNotNull { lbl ->
+                labels.indexOf(lbl).takeIf { it >= 0 }
+            }
+            if (indices.isNotEmpty()) {
+                val groupScore = indices.maxOf { scores[it] } // or sumOf
+                result[newLabel] = groupScore
+            }
+        }
+        return result
+    }
+
+    private fun loadLabels(context: Context, filename: String): List<String> {
+        return context.assets.open(filename).bufferedReader().readLines()
     }
 
     fun classify(audioData: FloatArray): Pair<String, Float> {
-        // Input: 1D float[waveform]
-        val input = arrayOf(audioData)
+        val inputBuffer = arrayOf(audioData)
+        val outputScores = Array(1) { FloatArray(labels.size) }
+        tflite.run(inputBuffer, outputScores)
 
-        // Output: [N, 521] float scores
-        val output = Array(1) { FloatArray(labels.size) }
-
-        interpreter.run(input, output)
-
-        // Get the top-scoring label
-        val scores = output[0]
+        val scores = outputScores[0]
         val maxIndex = scores.indices.maxByOrNull { scores[it] } ?: -1
-        val confidence = scores[maxIndex]
-        val label = labels.getOrNull(maxIndex) ?: "Unknown"
-
-        return label to confidence
-    }
-
-    fun close() {
-        interpreter.close()
+        return labels[maxIndex] to scores[maxIndex]
     }
 }

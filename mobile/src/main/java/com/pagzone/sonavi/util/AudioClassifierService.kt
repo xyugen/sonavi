@@ -20,11 +20,11 @@ import java.nio.ByteOrder
 
 object AudioClassifierService {
     private lateinit var appContext: Context
-    private lateinit var classifier: YamnetClassifier
+    private lateinit var hybridYamnetClassifier: HybridYamnetClassifier
 
     fun init(context: Context) {
         appContext = context.applicationContext
-        classifier = YamnetClassifier(appContext)
+        hybridYamnetClassifier = HybridYamnetClassifier(appContext)
     }
 
     fun classifyStream(inputStream: InputStream, scope: CoroutineScope) {
@@ -39,16 +39,12 @@ object AudioClassifierService {
                     val read = try {
                         inputStream.read(buffer)
                     } catch (e: ChannelIOException) {
-                        Log.w("AudioClassifier", "Watch disconnected during stream: ${e.message}")
-
+                        Log.w("AudioClassifier", "Watch disconnected: ${e.message}")
                         Handler(Looper.getMainLooper()).post {
-                            Toast.makeText(
-                                appContext,
-                                "Watch disconnected",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            Toast.makeText(appContext, "Watch disconnected", Toast.LENGTH_SHORT)
+                                .show()
                         }
-                        break // Exit loop gracefully
+                        break
                     } catch (e: IOException) {
                         Log.e("AudioClassifier", "I/O error reading stream", e)
                         break
@@ -68,30 +64,27 @@ object AudioClassifierService {
                     }
 
                     if (offset >= floatBuffer.size) {
-                        val (label, confidence) = classifier.classify(floatBuffer)
-                        if (confidence > 0.7f)
+                        val (label, confidence) = hybridYamnetClassifier.classify(floatBuffer)
+
+                        if (confidence > Constants.Classifier.CONFIDENCE_THRESHOLD) {
                             ClassificationResultRepositoryImpl.addResult(
                                 ClassificationResult(label, confidence)
                             )
-                        Log.d("Yamnet", "Label: $label, Conf: $confidence")
+
+                            Log.d("FewShot", "Label: $label, Conf: $confidence")
+                        }
+
                         offset = 0
                     }
                 }
             } finally {
                 try {
                     inputStream.close()
-
-                    val viewModel = ClientDataViewModel()
-                    viewModel.toggleListening(false)
+                    ClientDataViewModel().toggleListening(false)
                 } catch (e: IOException) {
                     Log.w("AudioClassifier", "Error closing inputStream", e)
                 }
             }
-            // No classifier.close() here
         }
-    }
-
-    fun shutdown() {
-        classifier.close()
     }
 }

@@ -7,6 +7,10 @@ class Constants {
 
         const val MIC_AUDIO_PATH = "/mic_audio"
     }
+    object Classifier {
+        const val CONFIDENCE_THRESHOLD = 0.6f
+        const val SMOOTHING_ALPHA = 0.75f
+    }
     object Capabilities {
         const val WEAR_CAPABILITY = "wear"
     }

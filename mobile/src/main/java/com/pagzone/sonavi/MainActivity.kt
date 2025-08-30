@@ -65,7 +65,6 @@ class MainActivity : ComponentActivity() {
         super.onDestroy()
 
         NavigationManager.clear()
-        AudioClassifierService.shutdown()
     }
 
     private fun startWearableActivity() {
