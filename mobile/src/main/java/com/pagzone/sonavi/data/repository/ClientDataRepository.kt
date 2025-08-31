@@ -2,9 +2,7 @@ package com.pagzone.sonavi.data.repository
 
 import android.content.Context
 import android.os.Build
-import android.os.VibrationEffect
 import android.util.Log
-import androidx.collection.longListOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.core.net.toUri
 import com.google.android.gms.wearable.CapabilityClient

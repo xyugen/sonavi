@@ -3,7 +3,6 @@ package com.pagzone.sonavi.presentation.data.repository
 import android.content.Context
 import android.content.Intent
 import android.os.VibrationEffect
-import android.os.Vibrator
 import android.util.Log
 import androidx.core.net.toUri
 import com.google.android.gms.wearable.CapabilityClient
@@ -14,6 +13,7 @@ import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable.getCapabilityClient
 import com.google.android.gms.wearable.Wearable.getDataClient
 import com.google.android.gms.wearable.Wearable.getMessageClient
+import com.pagzone.sonavi.presentation.model.SoundPrediction
 import com.pagzone.sonavi.presentation.model.SoundPredictionDTO
 import com.pagzone.sonavi.presentation.util.AudioStreamingService
 import com.pagzone.sonavi.presentation.util.Constants.Capabilities.WEAR_CAPABILITY
@@ -28,11 +28,14 @@ interface WearRepository {
     val isConnected: StateFlow<Boolean>
     val nodeId: StateFlow<String?>
     val isListening: StateFlow<Boolean>
+    val soundPrediction: StateFlow<SoundPrediction?>
 
     fun setIsConnected(connected: Boolean)
     fun setNodeId(nodeId: String)
+    fun setSoundPrediction(soundPrediction: SoundPrediction)
     fun toggleListening(enable: Boolean)
     fun clearData()
+    fun clearPrediction()
 
     fun initializeListeners()
     fun destroyListeners()
@@ -67,10 +70,12 @@ object WearRepositoryImpl : WearRepository {
     private val _isConnected: MutableStateFlow<Boolean> = MutableStateFlow(false)
     private val _nodeId: MutableStateFlow<String?> = MutableStateFlow(null)
     private val _isListening: MutableStateFlow<Boolean> = MutableStateFlow(false)
+    private val _soundPrediction: MutableStateFlow<SoundPrediction?> = MutableStateFlow(null)
 
     override val isConnected: StateFlow<Boolean> = _isConnected
     override val nodeId: StateFlow<String?> = _nodeId
     override val isListening: StateFlow<Boolean> = _isListening
+    override val soundPrediction: StateFlow<SoundPrediction?> = _soundPrediction
 
     fun init(context: Context) {
         appContext = context.applicationContext
@@ -85,6 +90,10 @@ object WearRepositoryImpl : WearRepository {
         _nodeId.value = nodeId
     }
 
+    override fun setSoundPrediction(soundPrediction: SoundPrediction) {
+        _soundPrediction.value = soundPrediction
+    }
+
     override fun toggleListening(enable: Boolean) {
         if (_isListening.value != enable) {
             _isListening.value = enable
@@ -94,6 +103,10 @@ object WearRepositoryImpl : WearRepository {
     override fun clearData() {
         _isConnected.value = false
         _nodeId.value = null
+    }
+
+    override fun clearPrediction() {
+        _soundPrediction.value = null
     }
 
     override fun initializeListeners() {
@@ -216,6 +229,8 @@ object WearRepositoryImpl : WearRepository {
             vibrationHelper.vibrate(vibrationEffect)
             Log.d(TAG, "Vibration triggered")
         }
+
+        setSoundPrediction(SoundPrediction(decodedPayload.label, decodedPayload.confidence))
 
         Log.d(TAG, "Vibration effect: ${decodedPayload.label} | ${decodedPayload.confidence}")
     }
