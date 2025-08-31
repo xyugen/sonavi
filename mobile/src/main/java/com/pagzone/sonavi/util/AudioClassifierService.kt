@@ -1,13 +1,16 @@
 package com.pagzone.sonavi.util
 
 import android.content.Context
+import android.os.Build
 import android.os.Handler
 import android.os.Looper
 import android.util.Log
 import android.widget.Toast
+import androidx.annotation.RequiresApi
 import com.google.android.gms.wearable.ChannelIOException
 import com.pagzone.sonavi.data.repository.ClassificationResultRepositoryImpl
 import com.pagzone.sonavi.model.ClassificationResult
+import com.pagzone.sonavi.model.VibrationEffectDTO
 import com.pagzone.sonavi.viewmodel.ClientDataViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -22,11 +25,14 @@ object AudioClassifierService {
     private lateinit var appContext: Context
     private lateinit var hybridYamnetClassifier: HybridYamnetClassifier
 
+    private val clientDataViewModel = ClientDataViewModel()
+
     fun init(context: Context) {
         appContext = context.applicationContext
         hybridYamnetClassifier = HybridYamnetClassifier(appContext)
     }
 
+    @RequiresApi(Build.VERSION_CODES.O)
     fun classifyStream(inputStream: InputStream, scope: CoroutineScope) {
         scope.launch(Dispatchers.IO) {
             val buffer = ByteArray(1024)
@@ -69,6 +75,14 @@ object AudioClassifierService {
                         if (confidence > Constants.Classifier.CONFIDENCE_THRESHOLD) {
                             ClassificationResultRepositoryImpl.addResult(
                                 ClassificationResult(label, confidence)
+                            )
+
+                            clientDataViewModel.sendPrediction(
+                                label, confidence, VibrationEffectDTO(
+                                    timings = listOf(0, 100, 200),
+                                    amplitudes = listOf(0, 255, 0),
+                                    repeat = -1
+                                )
                             )
 
                             Log.d("FewShot", "Label: $label, Conf: $confidence")

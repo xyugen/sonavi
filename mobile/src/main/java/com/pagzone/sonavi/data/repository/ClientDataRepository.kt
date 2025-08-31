@@ -1,7 +1,10 @@
 package com.pagzone.sonavi.data.repository
 
 import android.content.Context
+import android.os.Build
+import android.os.VibrationEffect
 import android.util.Log
+import androidx.collection.longListOf
 import androidx.compose.runtime.mutableStateListOf
 import androidx.core.net.toUri
 import com.google.android.gms.wearable.CapabilityClient
@@ -13,10 +16,13 @@ import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
 import com.pagzone.sonavi.R
+import com.pagzone.sonavi.model.SoundPredictionDTO
+import com.pagzone.sonavi.model.VibrationEffectDTO
 import com.pagzone.sonavi.util.AudioClassifierService
 import com.pagzone.sonavi.util.AudioStreamReceiver
 import com.pagzone.sonavi.util.Constants.Capabilities.WEAR_CAPABILITY
 import com.pagzone.sonavi.util.Constants.MessagePaths.MIC_AUDIO_PATH
+import com.pagzone.sonavi.util.Constants.MessagePaths.SOUND_DETECTED_PATH
 import com.pagzone.sonavi.util.Constants.MessagePaths.START_LISTENING_PATH
 import com.pagzone.sonavi.util.Constants.MessagePaths.STOP_LISTENING_PATH
 import com.pagzone.sonavi.viewmodel.Event
@@ -27,6 +33,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.serialization.json.Json
 
 interface ClientDataRepository {
     val isConnected: StateFlow<Boolean>
@@ -56,6 +63,7 @@ interface ClientDataRepository {
     suspend fun handleMessage(messageEvent: MessageEvent)
     fun handleDataChange(dataEvents: DataEventBuffer)
     fun handleCapability(capabilityInfo: CapabilityInfo)
+    fun sendPrediction(label: String, confidence: Float, vibration: VibrationEffectDTO)
 }
 
 object ClientDataRepositoryImpl : ClientDataRepository {
@@ -220,7 +228,9 @@ object ClientDataRepositoryImpl : ClientDataRepository {
         when (channel.path) {
             MIC_AUDIO_PATH -> {
                 val inputStream = channelClient.getInputStream(channel).await()
-                AudioClassifierService.classifyStream(inputStream, scope)
+                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
+                    AudioClassifierService.classifyStream(inputStream, scope)
+                }
 
                 Log.d(TAG, "Audio stream closed")
             }
@@ -274,5 +284,22 @@ object ClientDataRepositoryImpl : ClientDataRepository {
 
             Log.d(TAG, "No wearable connected")
         }
+    }
+
+    override fun sendPrediction(label: String, confidence: Float, vibration: VibrationEffectDTO) {
+        Log.d(TAG, "Sending prediction: $label")
+
+        val data = SoundPredictionDTO(label, confidence, vibration)
+        val jsonString = Json.encodeToString(data)
+
+        nodeId.value?.let { id ->
+            messageClient.sendMessage(id, SOUND_DETECTED_PATH, jsonString.toByteArray())
+                .addOnSuccessListener {
+                    Log.d(TAG, "Message sent")
+                }
+                .addOnFailureListener {
+                    Log.e(TAG, "Failed to send message", it)
+                }
+        } ?: Log.e(TAG, "Node ID is null, cannot stop listening")
     }
 }

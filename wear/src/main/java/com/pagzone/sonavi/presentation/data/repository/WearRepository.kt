@@ -2,6 +2,8 @@ package com.pagzone.sonavi.presentation.data.repository
 
 import android.content.Context
 import android.content.Intent
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.util.Log
 import androidx.core.net.toUri
 import com.google.android.gms.wearable.CapabilityClient
@@ -12,12 +14,15 @@ import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable.getCapabilityClient
 import com.google.android.gms.wearable.Wearable.getDataClient
 import com.google.android.gms.wearable.Wearable.getMessageClient
+import com.pagzone.sonavi.presentation.model.SoundPredictionDTO
 import com.pagzone.sonavi.presentation.util.AudioStreamingService
 import com.pagzone.sonavi.presentation.util.Constants.Capabilities.WEAR_CAPABILITY
 import com.pagzone.sonavi.presentation.util.Constants.MessagePaths.START_LISTENING_PATH
 import com.pagzone.sonavi.presentation.util.Constants.MessagePaths.STOP_LISTENING_PATH
+import com.pagzone.sonavi.presentation.util.VibrationHelper
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
+import kotlinx.serialization.json.Json
 
 interface WearRepository {
     val isConnected: StateFlow<Boolean>
@@ -43,6 +48,7 @@ object WearRepositoryImpl : WearRepository {
     private const val TAG = "WearRepository"
 
     private lateinit var appContext: Context
+    private lateinit var vibrationHelper: VibrationHelper
 
     //    private val channelClient by lazy { getChannelClient(appContext) }
     private val dataClient by lazy { getDataClient(appContext) }
@@ -68,6 +74,7 @@ object WearRepositoryImpl : WearRepository {
 
     fun init(context: Context) {
         appContext = context.applicationContext
+        vibrationHelper = VibrationHelper(appContext)
     }
 
     override fun setIsConnected(connected: Boolean) {
@@ -153,6 +160,7 @@ object WearRepositoryImpl : WearRepository {
         when (messageEvent.path) {
             "/start_listening" -> startListening()
             "/stop_listening" -> stopListening()
+            "/sound_detected" -> soundDetected(String(messageEvent.data))
         }
     }
 
@@ -190,6 +198,26 @@ object WearRepositoryImpl : WearRepository {
             action = AudioStreamingService.ACTION_STOP
         }
         appContext.startService(intent)
+    }
+
+    private fun soundDetected(payload: String) {
+        Log.d(TAG, "soundDetected")
+
+        val decodedPayload = Json.decodeFromString<SoundPredictionDTO>(payload)
+        val vibrationEffect = VibrationEffect.createWaveform(
+            decodedPayload.vibration.timings.toLongArray(),
+            decodedPayload.vibration.amplitudes.toIntArray(),
+            decodedPayload.vibration.repeat
+        )
+
+        val shouldTrigger = vibrationHelper.shouldTrigger(decodedPayload.label)
+
+        if (shouldTrigger) {
+            vibrationHelper.vibrate(vibrationEffect)
+            Log.d(TAG, "Vibration triggered")
+        }
+
+        Log.d(TAG, "Vibration effect: ${decodedPayload.label} | ${decodedPayload.confidence}")
     }
 }
 

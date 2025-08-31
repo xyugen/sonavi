@@ -6,6 +6,8 @@ class Constants {
         const val STOP_LISTENING_PATH = "/stop_listening"
 
         const val MIC_AUDIO_PATH = "/mic_audio"
+
+        const val SOUND_DETECTED_PATH = "/sound_detected"
     }
     object Classifier {
         const val CONFIDENCE_THRESHOLD = 0.6f

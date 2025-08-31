@@ -5,6 +5,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pagzone.sonavi.data.repository.ClientDataRepository
 import com.pagzone.sonavi.data.repository.ClientDataRepositoryImpl
+import com.pagzone.sonavi.model.VibrationEffectDTO
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
 import javax.inject.Inject
@@ -54,6 +55,12 @@ class ClientDataViewModel @Inject constructor(
     }
 
     fun toggleListening(enable: Boolean) = repository.toggleListening(enable)
+
+    fun sendPrediction(label: String, confidence: Float, vibration: VibrationEffectDTO) {
+        viewModelScope.launch {
+            repository.sendPrediction(label, confidence, vibration)
+        }
+    }
 }
 
 /**
