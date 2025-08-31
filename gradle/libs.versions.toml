@@ -1,5 +1,6 @@
 [versions]
 agp = "8.11.1"
+datastorePreferences = "1.1.7"
 hiltAndroid = "2.56.2"
 hiltNavigationFragment = "1.2.0"
 kotlin = "2.0.21"
@@ -27,6 +28,7 @@ lifecycleService = "2.9.2"
 
 [libraries]
 androidx-core-ktx = { group = "androidx.core", name = "core-ktx", version.ref = "coreKtx" }
+androidx-datastore-preferences = { module = "androidx.datastore:datastore-preferences", version.ref = "datastorePreferences" }
 androidx-hilt-navigation-fragment = { module = "androidx.hilt:hilt-navigation-fragment", version.ref = "hiltNavigationFragment" }
 androidx-navigation-compose = { module = "androidx.navigation:navigation-compose", version.ref = "navigationCompose" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hiltAndroid" }

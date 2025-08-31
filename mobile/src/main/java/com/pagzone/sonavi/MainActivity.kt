@@ -9,13 +9,16 @@ import androidx.activity.viewModels
 import androidx.compose.runtime.LaunchedEffect
 import androidx.navigation.compose.rememberNavController
 import com.pagzone.sonavi.data.repository.ClientDataRepositoryImpl
+import com.pagzone.sonavi.data.repository.SoundPreferencesRepositoryImpl
 import com.pagzone.sonavi.ui.navigation.NavigationManager
 import com.pagzone.sonavi.ui.screen.MainScreen
 import com.pagzone.sonavi.ui.theme.SonaviTheme
 import com.pagzone.sonavi.service.AudioClassifierService
 import com.pagzone.sonavi.util.ModelUtils
 import com.pagzone.sonavi.viewmodel.ClientDataViewModel
+import com.pagzone.sonavi.viewmodel.SoundPreferencesViewModel
 import dagger.hilt.android.AndroidEntryPoint
+import kotlin.getValue
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {
@@ -26,6 +29,7 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
 
+        SoundPreferencesRepositoryImpl.init(this)
         ClientDataRepositoryImpl.init(this)
         AudioClassifierService.init(this)
 

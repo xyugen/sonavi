@@ -23,12 +23,14 @@ import com.pagzone.sonavi.ui.component.TopAppBar
 import com.pagzone.sonavi.ui.navigation.AppNavHost
 import com.pagzone.sonavi.ui.navigation.NavRoute
 import com.pagzone.sonavi.viewmodel.ClientDataViewModel
+import com.pagzone.sonavi.viewmodel.SoundPreferencesViewModel
 
 @Preview(showSystemUi = true)
 @Composable
 fun MainScreen(
     navController: NavHostController = rememberNavController(),
-    viewModel: ClientDataViewModel = viewModel(),
+    clientDataViewModel: ClientDataViewModel = viewModel(),
+    soundPreferencesViewModel: SoundPreferencesViewModel = viewModel(),
     onStartListening: () -> Unit = {},
     onStopListening: () -> Unit = {}
 ) {
@@ -43,8 +45,8 @@ fun MainScreen(
     val currentRoute = navBackStackEntry?.destination?.route
     val currentTitle = NavRoute.fromRoute(currentRoute)?.label ?: ""
 
-    val isListening by viewModel.isListening.collectAsState()
-    val isConnected by viewModel.isConnected.collectAsState()
+    val isListening by clientDataViewModel.isListening.collectAsState()
+    val isConnected by clientDataViewModel.isConnected.collectAsState()
 
     Scaffold(
         containerColor = Color.Transparent,
@@ -73,7 +75,8 @@ fun MainScreen(
             AppNavHost(
                 navController,
                 modifier = Modifier.padding(horizontal = 21.dp),
-                viewModel = viewModel
+                clientDataViewModel = clientDataViewModel,
+                soundPreferencesViewModel = soundPreferencesViewModel
             )
         }
     }

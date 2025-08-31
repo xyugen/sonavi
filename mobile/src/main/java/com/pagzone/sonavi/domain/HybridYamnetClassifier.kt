@@ -2,17 +2,23 @@ package com.pagzone.sonavi.domain
 
 import android.content.Context
 import android.util.Log
+import com.pagzone.sonavi.data.repository.SoundPreferencesRepositoryImpl
+import com.pagzone.sonavi.model.SoundPreference
 import com.pagzone.sonavi.util.Constants
+import kotlinx.coroutines.flow.first
 import org.tensorflow.lite.Interpreter
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import kotlin.collections.iterator
 
-class HybridYamnetClassifier(context: Context) {
+class HybridYamnetClassifier(
+    context: Context
+) {
     private val interpreter: Interpreter
     private val labels: List<String>
     private val DEFAULT_THRESHOLD = 0.5f
     private val FEWSHOT_THRESHOLD = 0.75f
+
+    private val soundPreferencesRepository = SoundPreferencesRepositoryImpl
 
     private val emaScores = mutableMapOf<String, Float>()
 
@@ -29,59 +35,7 @@ class HybridYamnetClassifier(context: Context) {
     private fun mergePredictions(yamnetScores: FloatArray): Map<String, Float> {
         val merged = mutableMapOf<String, Float>()
 
-        // Group duplicate or similar YAMNet labels
-        val mergeMap: Map<String, List<Int>> = mapOf(
-            // Human vocalizations
-            "Speech" to listOf(0),
-            "Shout" to listOf(6, 9, 11), // Shout, Yell, Screaming
-            "Children shouting" to listOf(10),
-            "Baby cry" to listOf(19),
-            "Groan" to listOf(33),
-            "Growling" to listOf(74),
-            "Caterwaul" to listOf(80),
-
-            // Animals
-            "Snake" to listOf(129),
-            "Rattle" to listOf(130),
-
-            // Vehicles & traffic
-            "Bicycle bell" to listOf(198),
-            "Thunder" to listOf(281),
-            "Fire" to listOf(292, 293), // Fire + Crackle
-            "Vehicle" to listOf(294),
-            "Motorcycle (road)" to listOf(300, 320), // Road + General
-            "Car" to listOf(301),
-            "Vehicle horn" to listOf(302, 312), // Car horn + Truck/Air horn
-            "Car alarm" to listOf(304),
-            "Skidding" to listOf(306, 307), // Skidding + Tire squeal
-            "Reversing beep" to listOf(313),
-            "Emergency vehicle" to listOf(316),
-            "Police car siren" to listOf(317),
-            "Ambulance siren" to listOf(318),
-            "Fire truck siren" to listOf(319),
-            "Train horn" to listOf(324, 325), // Whistle + Horn
-
-            // Household
-            "Doorbell" to listOf(349),
-            "Siren" to listOf(390, 391), // General + Civil defense
-            "Buzzer" to listOf(392),
-            "Smoke alarm" to listOf(393),
-            "Fire alarm" to listOf(395),
-
-            // Explosives / Impact
-            "Explosion" to listOf(420),
-            "Gunshot" to listOf(421, 422, 423, 424, 425),
-            "Eruption" to listOf(429),
-            "Boom" to listOf(430),
-            "Crack" to listOf(434),
-            "Glass breaking" to listOf(435, 437, 464), // Glass, Shatter, Breaking
-            "Bang" to listOf(460),
-            "Crushing" to listOf(473),
-            "Beep" to listOf(475),
-            "Clitter" to listOf(483),
-        )
-
-        for ((customLabel, indices) in mergeMap) {
+        for ((customLabel, indices) in soundPreferencesRepository.mergeMap) {
             val sum = indices.sumOf { yamnetScores[it].toDouble() }
             merged[customLabel] = sum.toFloat()
         }
@@ -96,64 +50,57 @@ class HybridYamnetClassifier(context: Context) {
     private fun updateEma(merged: Map<String, Float>) {
         for ((label, score) in merged) {
             val prev = emaScores[label] ?: score
-            emaScores[label] = Constants.Classifier.SMOOTHING_ALPHA * score + (1 - Constants.Classifier.SMOOTHING_ALPHA) * prev
+            emaScores[label] =
+                Constants.Classifier.SMOOTHING_ALPHA * score + (1 - Constants.Classifier.SMOOTHING_ALPHA) * prev
         }
     }
 
-    fun classify(audioInput: FloatArray): Pair<String, Float> {
-        val inputBuffer = audioInput
-
-        // Run YAMNet
+    suspend fun classify(audioInput: FloatArray): Pair<String, Float> {
+        // 1. Run inference
         val outputScores = Array(1) { FloatArray(labels.size) }
-        interpreter.run(arrayOf(inputBuffer), outputScores)
+        interpreter.run(arrayOf(audioInput), outputScores)
 
-        // Get prediction scores
+        // 2. Get allowed labels from prefs
+        Log.d(
+            "HybridYamnetClassifier",
+            "Getting allowed prefs: ${
+                soundPreferencesRepository.getPreferencesFlow(
+                    soundPreferencesRepository.mergeMap.keys.toList()
+                ).first()
+            }"
+        )
+        val prefs =
+            soundPreferencesRepository.getPreferencesFlow(soundPreferencesRepository.mergeMap.keys.toList())
+                .first()
+        val allowedLabels = prefs
+            .filter { it.enabled && !isSnoozed(it) }
+            .map { it.label }
+            .toSet()
+
+        // 3. Merge predictions (if you’re grouping multiple YAMNet labels into one)
         val scores = outputScores[0]
         val merged = mergePredictions(scores)
         Log.d("HybridYamnetClassifier", "Merged: $merged")
 
-        // Apply Exponential Moving Average to smoothen prediction
+        // 4. Smooth scores with EMA
         updateEma(merged)
 
-        // Get top prediction
-        val top = getTopPrediction(emaScores)
-        Log.d("HybridYamnetClassifier", "Top: $top")
+        // 5. Apply filtering: only keep allowed labels
+        val filteredScores = emaScores.filterKeys { it in allowedLabels }
+
+        if (filteredScores.isEmpty()) {
+            Log.d("HybridYamnetClassifier", "No allowed predictions")
+            return "" to 0f
+        }
+
+        // 6. Get top prediction among allowed
+        val top = getTopPrediction(filteredScores)
+        Log.d("HybridYamnetClassifier", "Top (filtered): $top")
+
         return top
-//        return labels[maxIndex] to scores[maxIndex]
-//
-//        // 1️⃣ Default YAMNet prediction
-//        val maxIdx = scores.indices.maxByOrNull { scores[it] } ?: 0
-//        val defaultLabel = labels[maxIdx]
-//        val defaultConfidence = scores[maxIdx]
-//
-//        // 2️⃣ Few-shot prediction (if available)
-//        val fewShotResult = if (protoStore.examples.isNotEmpty()) {
-//            classifyFewShot(embedding)
-//        } else null
-//
-//        // 3️⃣ Decide final output
-//        return when {
-//            fewShotResult != null && fewShotResult.second >= FEWSHOT_THRESHOLD -> fewShotResult
-//            defaultConfidence >= DEFAULT_THRESHOLD -> defaultLabel to defaultConfidence
-//            else -> "Unknown" to 0f
-//        }
     }
 
-//    private fun classifyFewShot(embedding: FloatArray): Pair<String, Float> {
-//        var bestLabel = "Unknown"
-//        var bestScore = 0f
-//
-//        for ((label, storedEmbeddings) in protoStore.examples) {
-//            val avgEmbedding =
-//                storedEmbeddings.reduce { acc, e -> acc.zip(e) { a, b -> a + b }.toFloatArray() }
-//                    .map { it / storedEmbeddings.size }.toFloatArray()
-//
-//            val similarity = cosineSimilarity(embedding, avgEmbedding)
-//            if (similarity > bestScore) {
-//                bestScore = similarity
-//                bestLabel = label
-//            }
-//        }
-//        return bestLabel to bestScore
-//    }
+    private fun isSnoozed(pref: SoundPreference): Boolean {
+        return pref.snoozedUntil?.let { System.currentTimeMillis() < it } ?: false
+    }
 }

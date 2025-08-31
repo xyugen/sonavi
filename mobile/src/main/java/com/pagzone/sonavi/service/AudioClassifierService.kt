@@ -9,10 +9,10 @@ import android.widget.Toast
 import androidx.annotation.RequiresApi
 import com.google.android.gms.wearable.ChannelIOException
 import com.pagzone.sonavi.data.repository.ClassificationResultRepositoryImpl
+import com.pagzone.sonavi.domain.HybridYamnetClassifier
 import com.pagzone.sonavi.model.ClassificationResult
 import com.pagzone.sonavi.model.VibrationEffectDTO
 import com.pagzone.sonavi.util.Constants
-import com.pagzone.sonavi.domain.HybridYamnetClassifier
 import com.pagzone.sonavi.viewmodel.ClientDataViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -31,7 +31,7 @@ object AudioClassifierService {
 
     fun init(context: Context) {
         appContext = context.applicationContext
-        hybridYamnetClassifier = HybridYamnetClassifier(appContext)
+        hybridYamnetClassifier = HybridYamnetClassifier(context = appContext)
     }
 
     @RequiresApi(Build.VERSION_CODES.O)
