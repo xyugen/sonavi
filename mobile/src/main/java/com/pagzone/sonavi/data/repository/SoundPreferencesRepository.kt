@@ -102,7 +102,7 @@ object SoundPreferencesRepositoryImpl : SoundPreferencesRepository {
                         SoundPreference(label, enabled = false, snoozedUntil = until)
                     }
 
-                    else -> SoundPreference(label, true)
+                    else -> SoundPreference(label, false)
                 }
             }
         }
