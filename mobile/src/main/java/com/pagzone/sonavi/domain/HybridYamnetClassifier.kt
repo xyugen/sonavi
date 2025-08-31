@@ -1,11 +1,12 @@
-package com.pagzone.sonavi.util
+package com.pagzone.sonavi.domain
 
 import android.content.Context
 import android.util.Log
-import com.pagzone.sonavi.util.Constants.Classifier.SMOOTHING_ALPHA
+import com.pagzone.sonavi.util.Constants
 import org.tensorflow.lite.Interpreter
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import kotlin.collections.iterator
 
 class HybridYamnetClassifier(context: Context) {
     private val interpreter: Interpreter
@@ -95,7 +96,7 @@ class HybridYamnetClassifier(context: Context) {
     private fun updateEma(merged: Map<String, Float>) {
         for ((label, score) in merged) {
             val prev = emaScores[label] ?: score
-            emaScores[label] = SMOOTHING_ALPHA * score + (1 - SMOOTHING_ALPHA) * prev
+            emaScores[label] = Constants.Classifier.SMOOTHING_ALPHA * score + (1 - Constants.Classifier.SMOOTHING_ALPHA) * prev
         }
     }
 

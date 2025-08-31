@@ -1,10 +1,11 @@
-package com.pagzone.sonavi.util
+package com.pagzone.sonavi.domain
 
 import android.content.Context
 import org.tensorflow.lite.Interpreter
 import java.io.FileInputStream
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
+import kotlin.collections.iterator
 
 class YamnetClassifier(context: Context) {
     private val tflite: Interpreter

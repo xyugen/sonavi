@@ -16,7 +16,7 @@ import com.google.android.gms.wearable.Wearable
 import com.pagzone.sonavi.R
 import com.pagzone.sonavi.model.SoundPredictionDTO
 import com.pagzone.sonavi.model.VibrationEffectDTO
-import com.pagzone.sonavi.util.AudioClassifierService
+import com.pagzone.sonavi.service.AudioClassifierService
 import com.pagzone.sonavi.util.AudioStreamReceiver
 import com.pagzone.sonavi.util.Constants.Capabilities.WEAR_CAPABILITY
 import com.pagzone.sonavi.util.Constants.MessagePaths.MIC_AUDIO_PATH
