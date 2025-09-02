@@ -3,6 +3,7 @@ package com.pagzone.sonavi.ui.screen.page
 import android.util.Log
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
@@ -24,6 +25,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -68,6 +70,11 @@ fun LibraryPage(viewModel: SoundPreferencesViewModel, modifier: Modifier = Modif
         }
     }
 
+    // Check if all sounds are enabled
+    val allEnabled = remember(filteredPrefs) {
+        filteredPrefs.isNotEmpty() && filteredPrefs.all { it.enabled }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -85,6 +92,38 @@ fun LibraryPage(viewModel: SoundPreferencesViewModel, modifier: Modifier = Modif
             selectedFilter = selectedFilter,
             onFilterSelected = { selectedFilter = it }
         )
+
+        // Select All/Deselect All Button
+        if (filteredPrefs.isNotEmpty()) {
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Text(
+                    text = "${filteredPrefs.size} sound${if (filteredPrefs.size != 1) "s" else ""}",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+
+                TextButton(
+                    onClick = {
+                        val targetState = !allEnabled
+                        filteredPrefs.forEach { pref ->
+                            viewModel.toggleSound(pref.label, targetState)
+                        }
+                    }
+                ) {
+                    Text(
+                        text = if (allEnabled) "Disable All" else "Enable All",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.Medium
+                        )
+                    )
+                }
+            }
+        }
 
         LazyColumn {
             items(
@@ -189,29 +228,6 @@ fun SoundCard(
                     color = if (sound.enabled) Color(0xFF4CAF50) else Color(0xFF757575)
                 )
             }
-
-            // Toggle Switch - More obvious than the icon button
-//            Column(
-//                horizontalAlignment = Alignment.CenterHorizontally
-//            ) {
-//                Switch(
-//                    checked = sound.enabled,
-//                    onCheckedChange = onToggleClick,
-//                    colors = SwitchDefaults.colors(
-//                        checkedThumbColor = Color.White,
-//                        checkedTrackColor = MaterialTheme.colorScheme.primary,
-//                        uncheckedThumbColor = Color.White,
-//                        uncheckedTrackColor = Color(0xFFBDBDBD)
-//                    )
-//                )
-//
-//                Text(
-//                    text = if (sound.enabled) "ON" else "OFF",
-//                    style = MaterialTheme.typography.labelSmall,
-//                    color = if (sound.enabled) Color(0xFF1976D2) else Color(0xFF757575),
-//                    fontWeight = FontWeight.Medium
-//                )
-//            }
 
             // Menu with better visibility
             Box {
