@@ -27,6 +27,7 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
@@ -56,6 +57,17 @@ fun LibraryPage(viewModel: SoundPreferencesViewModel, modifier: Modifier = Modif
     val prefs by viewModel.preferencesFlow
         .collectAsStateWithLifecycle(initialValue = emptyList())
 
+    // Filter sounds based on search query
+    val filteredPrefs = remember(prefs, query) {
+        if (query.isBlank()) {
+            prefs
+        } else {
+            prefs.filter { pref ->
+                pref.label.contains(query, ignoreCase = true)
+            }
+        }
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -76,7 +88,7 @@ fun LibraryPage(viewModel: SoundPreferencesViewModel, modifier: Modifier = Modif
 
         LazyColumn {
             items(
-                items = prefs,
+                items = filteredPrefs,
                 key = { it.label }
             ) { pref ->
                 SoundCard(
