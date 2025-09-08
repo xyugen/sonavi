@@ -1,6 +1,5 @@
 package com.pagzone.sonavi.ui.component
 
-import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -26,16 +25,16 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.vector.ImageVector
-import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
-import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
+import androidx.navigation.NavHostController
 import com.pagzone.sonavi.R
+import com.pagzone.sonavi.ui.navigation.NavRoute
 import com.pagzone.sonavi.ui.theme.Gray10
 
-@Preview
 @Composable
 fun TopAppBar(
+    navController: NavHostController,
     modifier: Modifier = Modifier,
     title: String = "",
     isListenModeChecked: Boolean = false,
@@ -79,16 +78,24 @@ fun TopAppBar(
                 }
                 Spacer(modifier = Modifier.width(10.dp))
                 IconButton(
-                    onClick = { /* Handle click */ },
+                    onClick = {
+                        navController.navigate(NavRoute.Profile.route) {
+                            popUpTo(navController.graph.startDestinationId) {
+                                saveState = true
+                            }
+                            launchSingleTop = true
+                            restoreState = true
+                        }
+                    },
                     modifier = Modifier.size(48.dp),
                     colors = IconButtonDefaults.iconButtonColors(
                         containerColor = MaterialTheme.colorScheme.primary,
                         contentColor = MaterialTheme.colorScheme.onPrimary
                     )
                 ) {
-                    Image(
+                    Icon(
                         modifier = Modifier.size(28.dp),
-                        painter = painterResource(id = R.drawable.ic_launcher_foreground),
+                        imageVector = ImageVector.vectorResource(R.drawable.ic_person_outline),
                         contentDescription = "Profile"
                     )
                 }

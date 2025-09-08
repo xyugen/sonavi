@@ -4,7 +4,7 @@ import com.pagzone.sonavi.R
 import kotlinx.serialization.Serializable
 
 @Serializable
-sealed class NavRoute(val route: String, val label: String, val iconRes: Int) {
+sealed class NavRoute(val route: String, val label: String, val iconRes: Int? = null) {
     @Serializable
     data object Home : NavRoute("home", "Home", R.drawable.ic_home)
 
@@ -14,6 +14,10 @@ sealed class NavRoute(val route: String, val label: String, val iconRes: Int) {
     @Serializable
     data object Library :
         NavRoute("library", "Library", R.drawable.ic_music_note)
+
+    @Serializable
+    data object Profile :
+        NavRoute("profile", "Profile")
 
     companion object {
         val bottomNavItems = listOf(Home, AddSound, Library)

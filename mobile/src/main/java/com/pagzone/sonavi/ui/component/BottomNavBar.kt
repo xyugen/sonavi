@@ -43,7 +43,7 @@ fun BottomNavBar(navController: NavHostController) {
                 },
                 icon = {
                     Icon(
-                        ImageVector.vectorResource(id = navItem.iconRes),
+                        ImageVector.vectorResource(id = navItem.iconRes!!),
                         contentDescription = navItem.label,
                     )
                 },

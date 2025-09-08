@@ -9,6 +9,7 @@ import androidx.navigation.compose.composable
 import com.pagzone.sonavi.ui.screen.page.AddSoundPage
 import com.pagzone.sonavi.ui.screen.page.HomePage
 import com.pagzone.sonavi.ui.screen.page.LibraryPage
+import com.pagzone.sonavi.ui.screen.page.ProfilePage
 import com.pagzone.sonavi.viewmodel.ClientDataViewModel
 import com.pagzone.sonavi.viewmodel.SoundPreferencesViewModel
 
@@ -28,6 +29,11 @@ fun AppNavHost(
         }
         composable(NavRoute.Library.route) {
             LibraryPage(soundPreferencesViewModel, modifier)
+        }
+
+        // Not in bottom navigation
+        composable(NavRoute.Profile.route) {
+            ProfilePage(navController, modifier)
         }
     }
 }
