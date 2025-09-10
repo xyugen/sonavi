@@ -64,6 +64,6 @@ class ClientDataViewModel(
  * A data holder describing a client event.
  */
 data class Event(
-    @StringRes val title: Int,
+    @param:StringRes val title: Int,
     val text: String
 )
