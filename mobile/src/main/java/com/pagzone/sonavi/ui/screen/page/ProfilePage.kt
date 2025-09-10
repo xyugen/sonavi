@@ -1,5 +1,13 @@
 package com.pagzone.sonavi.ui.screen.page
 
+import android.Manifest
+import android.content.pm.PackageManager
+import android.net.Uri
+import android.provider.ContactsContract
+import android.util.Log
+import android.widget.Toast
+import androidx.activity.compose.rememberLauncherForActivityResult
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
@@ -16,6 +24,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.AlertDialog
@@ -49,28 +58,34 @@ import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.pagzone.sonavi.R
+import com.pagzone.sonavi.model.EmergencyContact
 import com.pagzone.sonavi.ui.navigation.NavRoute
+import com.pagzone.sonavi.viewmodel.EmergencyContactViewModel
 import com.pagzone.sonavi.viewmodel.ProfileSettingsViewModel
 
 @Composable
 fun ProfilePage(
     navController: NavHostController,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    viewModel: EmergencyContactViewModel = hiltViewModel()
 ) {
+    val emergencyContacts by viewModel.emergencyContacts.collectAsState()
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(vertical = 16.dp)
     ) {
-        // Top Bar
         TopBar("Profile", navController)
 
         Spacer(modifier = Modifier.height(24.dp))
@@ -112,15 +127,21 @@ fun ProfilePage(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 item {
-                    AddContactButton(onClick = {})
+                    AddContactButton(viewModel)
                 }
 
                 items(
-                    count = 10,
-                    key = { it }
-                ) {
+                    items = emergencyContacts,
+                    key = { it.id },
+                ) { emergencyContact ->
                     EmergencyContactCard(
-                        onMenuClick = {}
+                        contact = emergencyContact,
+                        onMenuClick = { item ->
+                            when (item) {
+                                "edit" -> {}
+                                "delete" -> viewModel.deleteEmergencyContact(emergencyContact)
+                            }
+                        }
                     )
                 }
             }
@@ -130,15 +151,90 @@ fun ProfilePage(
 
 @Composable
 fun AddContactButton(
-    onClick: () -> Unit,
+    viewModel: EmergencyContactViewModel,
     modifier: Modifier = Modifier
 ) {
+    val context = LocalContext.current
+
+    val pickContactLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.PickContact()
+    ) { uri: Uri? ->
+        uri?.let {
+            val cursor = context.contentResolver.query(
+                it,
+                null,
+                null,
+                null,
+                null
+            )
+            cursor?.use { c ->
+                if (c.moveToFirst()) {
+                    val name =
+                        c.getString(c.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME))
+                    val id = c.getString(c.getColumnIndexOrThrow(ContactsContract.Contacts._ID))
+
+                    var phoneNumber: String? = null
+                    val phones = context.contentResolver.query(
+                        ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                        null,
+                        "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
+                        arrayOf(id),
+                        null
+                    )
+                    phones?.use { p ->
+                        if (p.moveToFirst()) {
+                            phoneNumber =
+                                p.getString(p.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER))
+                        }
+                    }
+
+                    Log.d("ContactPicker", "Name: $name, Number: $phoneNumber")
+                    if (phoneNumber?.isNotEmpty() == true) {
+                        viewModel.addEmergencyContact(name, phoneNumber)
+                    } else {
+                        Toast.makeText(
+                            context,
+                            "Phone number must not be empty!",
+                            Toast.LENGTH_SHORT
+                        ).show()
+                    }
+                }
+            }
+        }
+    }
+
+    val permissionLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.RequestPermission()
+    ) { isGranted ->
+        if (isGranted) {
+            pickContactLauncher.launch(null)
+        } else {
+            Toast.makeText(context, "Contacts permission denied", Toast.LENGTH_SHORT).show()
+        }
+    }
+
     Surface(
-        onClick = onClick,
+        onClick = {
+            when {
+                ContextCompat.checkSelfPermission(
+                    context,
+                    Manifest.permission.READ_CONTACTS
+                ) == PackageManager.PERMISSION_GRANTED -> {
+                    pickContactLauncher.launch(null)
+                }
+
+                else -> {
+                    permissionLauncher.launch(Manifest.permission.READ_CONTACTS)
+                }
+            }
+        },
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
         color = Color.Transparent,
-        border = BorderStroke(.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+        border = BorderStroke(
+            width = .5.dp,
+            color = MaterialTheme.colorScheme.primary.copy(alpha = 0.25f)
+        )
     ) {
         Row(
             modifier = Modifier.padding(16.dp),
@@ -174,7 +270,7 @@ fun AddContactButton(
 
 @Composable
 fun EmergencyContactCard(
-//    contact: EmergencyContact,
+    contact: EmergencyContact,
     onMenuClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
@@ -221,13 +317,13 @@ fun EmergencyContactCard(
                 verticalArrangement = Arrangement.spacedBy(1.dp)
             ) {
                 Text(
-                    text = "Ara Garong",
+                    text = contact.name,
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
                 Text(
-                    text = "0912-345-6789",
+                    text = contact.number,
                     style = MaterialTheme.typography.bodyMedium,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
@@ -597,7 +693,7 @@ fun EditProfileDialog(
 @Composable
 fun TopBar(title: String, navController: NavHostController, modifier: Modifier = Modifier) {
     Row(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         horizontalArrangement = Arrangement.SpaceBetween
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {

@@ -17,8 +17,12 @@ class Constants {
         const val WEAR_CAPABILITY = "wear"
     }
     object DataStoreKeys {
+        // PROFILE
         const val PROFILE_NAME = "profile_name"
         const val PROFILE_ADDRESS = "profile_address"
         const val PROFILE_SETTINGS = "profile_settings"
+    }
+    object RoomKeys {
+        const val EMERGENCY_CONTACTS = "emergency_contacts"
     }
 }

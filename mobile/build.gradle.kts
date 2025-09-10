@@ -86,4 +86,9 @@ dependencies {
     implementation(libs.litert)
     // https://mvnrepository.com/artifact/com.google.ai.edge.litert/litert-support
     implementation(libs.litert.support)
+
+    // Room
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
+    implementation (libs.androidx.room.ktx)
 }
