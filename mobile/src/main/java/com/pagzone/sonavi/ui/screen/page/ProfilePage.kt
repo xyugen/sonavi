@@ -1,5 +1,6 @@
 package com.pagzone.sonavi.ui.screen.page
 
+import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -18,18 +19,22 @@ import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
-import androidx.compose.material3.OutlinedTextFieldDefaults
+import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -44,9 +49,11 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.pagzone.sonavi.R
 import com.pagzone.sonavi.ui.navigation.NavRoute
+import com.pagzone.sonavi.viewmodel.ProfileSettingsViewModel
 
 @Composable
 fun ProfilePage(
@@ -85,13 +92,20 @@ fun ProfilePage(
 @Composable
 fun ProfileCard(
     modifier: Modifier = Modifier,
-    name: String = "Alex Arias",
-    address: String = "Blk 1 Lot 1, San Isidro, Mandaluyong",
+    profileViewModel: ProfileSettingsViewModel = hiltViewModel()
 ) {
+    val profileSettings by profileViewModel.profileSettings.collectAsState()
+    val uiState by profileViewModel.uiState.collectAsState()
+
     var showEditDialog by remember { mutableStateOf(false) }
 
-    var currentName by remember { mutableStateOf(name) }
-    var currentAddress by remember { mutableStateOf(address) }
+    // Handle error states
+    LaunchedEffect(uiState.error) {
+        uiState.error?.let { error ->
+            // Show snackbar or toast
+            println("Profile error: $error")
+        }
+    }
 
     Box(
         modifier = modifier
@@ -123,8 +137,15 @@ fun ProfileCard(
                         ),
                     contentAlignment = Alignment.Center
                 ) {
+                    val initials = if (profileSettings.name.isNotEmpty()) {
+                        profileSettings.name.split(" ")
+                            .map { it.first().uppercaseChar() }
+                            .joinToString("")
+                            .take(2)
+                    } else "?"
+
                     Text(
-                        text = currentName.split(" ").map { it.first() }.joinToString("").take(2),
+                        text = initials,
                         style = MaterialTheme.typography.titleLarge,
                         color = Color.White,
                         fontWeight = FontWeight.Bold
@@ -136,13 +157,13 @@ fun ProfileCard(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = currentName,
+                        text = profileSettings.name.ifEmpty { "No name set" },
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = currentAddress,
+                        text = profileSettings.address.ifEmpty { "No address set" },
                         style = MaterialTheme.typography.bodyMedium,
                         color = Color.White.copy(alpha = 0.8f),
                         maxLines = 1,
@@ -173,10 +194,56 @@ fun ProfileCard(
                 contentColor = MaterialTheme.colorScheme.primary
             )
         ) {
-            Icon(
-                modifier = Modifier.size(20.dp),
-                imageVector = ImageVector.vectorResource(id = R.drawable.ic_edit),
-                contentDescription = "Edit"
+            if (uiState.isLoading) {
+                CircularProgressIndicator(
+                    modifier = Modifier.size(20.dp),
+                    strokeWidth = 2.dp,
+                    color = MaterialTheme.colorScheme.primary
+                )
+            } else {
+                Icon(
+                    modifier = Modifier.size(20.dp),
+                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_edit),
+                    contentDescription = "Edit"
+                )
+            }
+        }
+
+        // Success indicator
+        AnimatedVisibility(
+            visible = uiState.isSuccess,
+            modifier = Modifier
+                .align(Alignment.TopEnd)
+                .offset(x = (-5).dp, y = (-15).dp)
+        ) {
+            Surface(
+                modifier = Modifier.size(42.dp),
+                shape = CircleShape,
+                color = Color.Green,
+                shadowElevation = 4.dp
+            ) {
+                Icon(
+                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_check),
+                    contentDescription = "Success",
+                    modifier = Modifier
+                        .size(20.dp)
+                        .padding(11.dp),
+                    tint = Color.White
+                )
+            }
+        }
+
+        // Edit Dialog
+        if (showEditDialog) {
+            EditProfileDialog(
+                currentName = profileSettings.name,
+                currentAddress = profileSettings.address,
+                isLoading = uiState.isLoading,
+                onDismiss = { showEditDialog = false },
+                onConfirm = { newName, newAddress ->
+                    profileViewModel.updateProfile(newName, newAddress)
+                    showEditDialog = false
+                }
             )
         }
     }
@@ -185,14 +252,12 @@ fun ProfileCard(
     // Edit Profile Dialog
     if (showEditDialog) {
         EditProfileDialog(
-            currentName = currentName,
-            currentAddress = currentAddress,
+            currentName = profileSettings.name,
+            currentAddress = profileSettings.address,
+            isLoading = uiState.isLoading,
             onDismiss = { showEditDialog = false },
             onConfirm = { newName, newAddress ->
-                currentName = newName
-                currentAddress = newAddress
-                // TODO: Update profile
-//                onProfileUpdated(newName, newAddress)
+                profileViewModel.updateProfile(newName, newAddress)
                 showEditDialog = false
             }
         )
@@ -204,104 +269,78 @@ fun ProfileCard(
 fun EditProfileDialog(
     currentName: String,
     currentAddress: String,
+    isLoading: Boolean,
     onDismiss: () -> Unit,
     onConfirm: (String, String) -> Unit
 ) {
     var name by remember { mutableStateOf(currentName) }
     var address by remember { mutableStateOf(currentAddress) }
 
-    // Validation state
-    val isNameValid = name.isNotBlank()
-    val isAddressValid = address.isNotBlank()
-    val isFormValid = isNameValid && isAddressValid
-
+    val isFormValid = name.isNotBlank() && address.isNotBlank()
+    val hasChanges = name != currentName || address != currentAddress
 
     AlertDialog(
-        onDismissRequest = onDismiss,
+        onDismissRequest = { if (!isLoading) onDismiss() },
         title = {
             Text(
                 text = "Edit Profile",
                 style = MaterialTheme.typography.headlineSmall,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Bold
             )
         },
         text = {
             Column(
                 verticalArrangement = Arrangement.spacedBy(16.dp)
             ) {
-                // Name TextField
                 OutlinedTextField(
                     value = name,
                     onValueChange = { name = it },
                     label = { Text("Name") },
                     placeholder = { Text("Enter your name") },
                     modifier = Modifier.fillMaxWidth(),
-                    isError = !isNameValid && name.isNotEmpty(),
-                    supportingText = {
-                        if (!isNameValid && name.isNotEmpty()) {
-                            Text(
-                                text = "Name cannot be empty",
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    },
+                    enabled = !isLoading,
+                    isError = !name.isNotBlank() && name.isNotEmpty(),
                     leadingIcon = {
                         Icon(
                             imageVector = ImageVector.vectorResource(id = R.drawable.ic_person_outline),
                             contentDescription = "Name"
                         )
                     },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        focusedLabelColor = MaterialTheme.colorScheme.primary
-                    )
+                    singleLine = true
                 )
 
-                // Address TextField
                 OutlinedTextField(
                     value = address,
                     onValueChange = { address = it },
                     label = { Text("Address") },
                     placeholder = { Text("Enter your address") },
                     modifier = Modifier.fillMaxWidth(),
-                    isError = !isAddressValid && address.isNotEmpty(),
-                    supportingText = {
-                        if (!isAddressValid && address.isNotEmpty()) {
-                            Text(
-                                text = "Address cannot be empty",
-                                color = MaterialTheme.colorScheme.error
-                            )
-                        }
-                    },
+                    enabled = !isLoading,
+                    isError = !address.isNotBlank() && address.isNotEmpty(),
                     leadingIcon = {
                         Icon(
                             imageVector = ImageVector.vectorResource(id = R.drawable.ic_location),
                             contentDescription = "Address"
                         )
                     },
-                    singleLine = true,
-                    colors = OutlinedTextFieldDefaults.colors(
-                        focusedBorderColor = MaterialTheme.colorScheme.primary,
-                        focusedLabelColor = MaterialTheme.colorScheme.primary
-                    )
+                    singleLine = true
                 )
             }
         },
         confirmButton = {
-            TextButton(
-                onClick = {
-                    if (isFormValid) {
-                        onConfirm(name.trim(), address.trim())
-                    }
-                },
-                enabled = isFormValid,
-                colors = ButtonDefaults.textButtonColors(
-                    contentColor = MaterialTheme.colorScheme.primary,
-                    disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
-                )
+            Button(
+                onClick = { onConfirm(name.trim(), address.trim()) },
+                enabled = isFormValid && hasChanges && !isLoading
             ) {
-                Text("Save", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+                if (isLoading) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.size(16.dp),
+                        strokeWidth = 2.dp,
+                        color = MaterialTheme.colorScheme.onPrimary
+                    )
+                } else {
+                    Text("Save", fontWeight = FontWeight.SemiBold)
+                }
             }
         },
         dismissButton = {

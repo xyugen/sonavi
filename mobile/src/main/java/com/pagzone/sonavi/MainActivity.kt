@@ -1,5 +1,6 @@
 package com.pagzone.sonavi
 
+import android.content.Context
 import android.os.Bundle
 import android.util.Log
 import androidx.activity.ComponentActivity
@@ -7,18 +8,22 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.viewModels
 import androidx.compose.runtime.LaunchedEffect
+import androidx.datastore.core.DataStore
+import androidx.datastore.preferences.core.Preferences
+import androidx.datastore.preferences.preferencesDataStore
 import androidx.navigation.compose.rememberNavController
 import com.pagzone.sonavi.data.repository.ClientDataRepositoryImpl
 import com.pagzone.sonavi.data.repository.SoundPreferencesRepositoryImpl
+import com.pagzone.sonavi.service.AudioClassifierService
 import com.pagzone.sonavi.ui.navigation.NavigationManager
 import com.pagzone.sonavi.ui.screen.MainScreen
 import com.pagzone.sonavi.ui.theme.SonaviTheme
-import com.pagzone.sonavi.service.AudioClassifierService
+import com.pagzone.sonavi.util.Constants.DataStoreKeys.PROFILE_SETTINGS
 import com.pagzone.sonavi.util.ModelUtils
 import com.pagzone.sonavi.viewmodel.ClientDataViewModel
-import com.pagzone.sonavi.viewmodel.SoundPreferencesViewModel
 import dagger.hilt.android.AndroidEntryPoint
-import kotlin.getValue
+
+val Context.dataStore: DataStore<Preferences> by preferencesDataStore(PROFILE_SETTINGS)
 
 @AndroidEntryPoint
 class MainActivity : ComponentActivity() {

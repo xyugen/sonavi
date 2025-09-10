@@ -16,4 +16,9 @@ class Constants {
     object Capabilities {
         const val WEAR_CAPABILITY = "wear"
     }
+    object DataStoreKeys {
+        const val PROFILE_NAME = "profile_name"
+        const val PROFILE_ADDRESS = "profile_address"
+        const val PROFILE_SETTINGS = "profile_settings"
+    }
 }

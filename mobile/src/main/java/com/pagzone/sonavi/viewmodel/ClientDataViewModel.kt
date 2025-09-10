@@ -6,12 +6,9 @@ import androidx.lifecycle.viewModelScope
 import com.pagzone.sonavi.data.repository.ClientDataRepository
 import com.pagzone.sonavi.data.repository.ClientDataRepositoryImpl
 import com.pagzone.sonavi.model.VibrationEffectDTO
-import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class ClientDataViewModel @Inject constructor(
+class ClientDataViewModel(
     private val repository: ClientDataRepository = ClientDataRepositoryImpl
 ) : ViewModel() {
 
