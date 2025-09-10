@@ -24,6 +24,9 @@ import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
+import androidx.compose.material3.DropdownMenu
+import androidx.compose.material3.DropdownMenuItem
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
@@ -108,6 +111,10 @@ fun ProfilePage(
             LazyColumn(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
+                item {
+                    AddContactButton(onClick = {})
+                }
+
                 items(
                     count = 10,
                     key = { it }
@@ -122,11 +129,57 @@ fun ProfilePage(
 }
 
 @Composable
+fun AddContactButton(
+    onClick: () -> Unit,
+    modifier: Modifier = Modifier
+) {
+    Surface(
+        onClick = onClick,
+        modifier = modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(16.dp),
+        color = Color.Transparent,
+        border = BorderStroke(.5.dp, MaterialTheme.colorScheme.primary.copy(alpha = 0.25f))
+    ) {
+        Row(
+            modifier = Modifier.padding(16.dp),
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(16.dp)
+        ) {
+            Surface(
+                modifier = Modifier.size(48.dp),
+                shape = CircleShape,
+                color = MaterialTheme.colorScheme.primary
+            ) {
+                Icon(
+                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_add_circle), // or Icons.Default.Add
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.onPrimary,
+                    modifier = Modifier
+                        .size(24.dp)
+                        .padding(12.dp)
+                )
+            }
+
+            Text(
+                text = "Add emergency contact",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Medium
+            )
+
+            Spacer(modifier = Modifier.weight(1f))
+        }
+    }
+}
+
+@Composable
 fun EmergencyContactCard(
 //    contact: EmergencyContact,
     onMenuClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
+    var showMenu by remember { mutableStateOf(false) }
+
     Card(
         modifier = modifier.fillMaxWidth(),
         shape = RoundedCornerShape(16.dp),
@@ -165,7 +218,7 @@ fun EmergencyContactCard(
             // Contact Info
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(4.dp)
+                verticalArrangement = Arrangement.spacedBy(1.dp)
             ) {
                 Text(
                     text = "Ara Garong",
@@ -183,7 +236,7 @@ fun EmergencyContactCard(
             // Menu Button
             Box {
                 IconButton(
-                    onClick = { },
+                    onClick = { showMenu = true },
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
@@ -195,42 +248,80 @@ fun EmergencyContactCard(
                 }
 
                 // Dropdown Menu
-//                DropdownMenu(
-//                    expanded = showMenu,
-//                    onDismissRequest = { showMenu = false },
-//                    shape = RoundedCornerShape(12.dp),
-//                    containerColor = MaterialTheme.colorScheme.surface,
-//                    shadowElevation = 8.dp
-//                ) {
-//                    ContactMenuItem(
-//                        text = "Call",
-//                        icon = R.drawable.ic_phone,
-//                        onClick = {
-//                            onMenuClick("call")
-//                            showMenu = false
-//                        }
-//                    )
-//                    ContactMenuItem(
-//                        text = "Edit",
-//                        icon = R.drawable.ic_edit,
-//                        onClick = {
-//                            onMenuClick("edit")
-//                            showMenu = false
-//                        }
-//                    )
-//                    ContactMenuItem(
-//                        text = "Delete",
-//                        icon = R.drawable.ic_delete,
-//                        onClick = {
-//                            onMenuClick("delete")
-//                            showMenu = false
-//                        },
-//                        isDestructive = true
-//                    )
-//                }
+                DropdownMenu(
+                    modifier = Modifier.padding(horizontal = 8.dp),
+                    expanded = showMenu,
+                    onDismissRequest = { showMenu = false },
+                    shape = RoundedCornerShape(12.dp),
+                    containerColor = MaterialTheme.colorScheme.surface,
+                    shadowElevation = 8.dp
+                ) {
+                    ContactMenuItem(
+                        text = "Edit",
+                        icon = R.drawable.ic_edit,
+                        onClick = {
+                            onMenuClick("edit")
+                            showMenu = false
+                        }
+                    )
+
+                    HorizontalDivider()
+
+                    ContactMenuItem(
+                        text = "Delete",
+                        icon = R.drawable.ic_trash_x,
+                        onClick = {
+                            onMenuClick("delete")
+                            showMenu = false
+                        },
+                        isDestructive = true
+                    )
+                }
             }
         }
     }
+}
+
+@Composable
+fun ContactMenuItem(
+    text: String,
+    icon: Int,
+    onClick: () -> Unit,
+    isDestructive: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    val textColor = if (isDestructive)
+        MaterialTheme.colorScheme.error
+    else
+        MaterialTheme.colorScheme.onSurface
+
+    val iconColor = if (isDestructive)
+        MaterialTheme.colorScheme.error
+    else
+        MaterialTheme.colorScheme.onSurfaceVariant
+
+    DropdownMenuItem(
+        onClick = onClick,
+        modifier = modifier,
+        text = {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = ImageVector.vectorResource(id = icon),
+                    contentDescription = null,
+                    tint = iconColor,
+                    modifier = Modifier.size(20.dp)
+                )
+                Text(
+                    text = text,
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = textColor
+                )
+            }
+        }
+    )
 }
 
 @Composable
