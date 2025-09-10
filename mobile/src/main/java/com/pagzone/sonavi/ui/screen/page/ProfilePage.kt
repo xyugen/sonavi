@@ -17,14 +17,23 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.remember
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.shadow
@@ -32,7 +41,9 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import androidx.navigation.NavHostController
 import com.pagzone.sonavi.R
 import com.pagzone.sonavi.ui.navigation.NavRoute
@@ -73,14 +84,18 @@ fun ProfilePage(
 
 @Composable
 fun ProfileCard(
+    modifier: Modifier = Modifier,
     name: String = "Alex Arias",
-    number: String = "0912-345-6789",
-    modifier: Modifier = Modifier
+    address: String = "Blk 1 Lot 1, San Isidro, Mandaluyong",
 ) {
+    var showEditDialog by remember { mutableStateOf(false) }
+
+    var currentName by remember { mutableStateOf(name) }
+    var currentAddress by remember { mutableStateOf(address) }
+
     Box(
         modifier = modifier
             .fillMaxWidth()
-//            .padding(end = 20.dp) // Space for the overlapping button
     ) {
         Card(
             modifier = modifier.fillMaxWidth(),
@@ -109,7 +124,7 @@ fun ProfileCard(
                     contentAlignment = Alignment.Center
                 ) {
                     Text(
-                        text = name.split(" ").map { it.first() }.joinToString("").take(2),
+                        text = currentName.split(" ").map { it.first() }.joinToString("").take(2),
                         style = MaterialTheme.typography.titleLarge,
                         color = Color.White,
                         fontWeight = FontWeight.Bold
@@ -121,15 +136,17 @@ fun ProfileCard(
                     verticalArrangement = Arrangement.spacedBy(4.dp)
                 ) {
                     Text(
-                        text = name,
+                        text = currentName,
                         style = MaterialTheme.typography.titleMedium,
                         color = Color.White,
                         fontWeight = FontWeight.Bold
                     )
                     Text(
-                        text = number,
+                        text = currentAddress,
                         style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.8f)
+                        color = Color.White.copy(alpha = 0.8f),
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
@@ -138,7 +155,9 @@ fun ProfileCard(
 
         // Overlapping Edit Button
         IconButton(
-            onClick = { },
+            onClick = {
+                showEditDialog = true
+            },
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .offset(x = (-5).dp, y = (-15).dp)
@@ -161,6 +180,144 @@ fun ProfileCard(
             )
         }
     }
+
+
+    // Edit Profile Dialog
+    if (showEditDialog) {
+        EditProfileDialog(
+            currentName = currentName,
+            currentAddress = currentAddress,
+            onDismiss = { showEditDialog = false },
+            onConfirm = { newName, newAddress ->
+                currentName = newName
+                currentAddress = newAddress
+                // TODO: Update profile
+//                onProfileUpdated(newName, newAddress)
+                showEditDialog = false
+            }
+        )
+    }
+}
+
+
+@Composable
+fun EditProfileDialog(
+    currentName: String,
+    currentAddress: String,
+    onDismiss: () -> Unit,
+    onConfirm: (String, String) -> Unit
+) {
+    var name by remember { mutableStateOf(currentName) }
+    var address by remember { mutableStateOf(currentAddress) }
+
+    // Validation state
+    val isNameValid = name.isNotBlank()
+    val isAddressValid = address.isNotBlank()
+    val isFormValid = isNameValid && isAddressValid
+
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = {
+            Text(
+                text = "Edit Profile",
+                style = MaterialTheme.typography.headlineSmall,
+                fontWeight = FontWeight.Medium
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                // Name TextField
+                OutlinedTextField(
+                    value = name,
+                    onValueChange = { name = it },
+                    label = { Text("Name") },
+                    placeholder = { Text("Enter your name") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = !isNameValid && name.isNotEmpty(),
+                    supportingText = {
+                        if (!isNameValid && name.isNotEmpty()) {
+                            Text(
+                                text = "Name cannot be empty",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(id = R.drawable.ic_person_outline),
+                            contentDescription = "Name"
+                        )
+                    },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+
+                // Address TextField
+                OutlinedTextField(
+                    value = address,
+                    onValueChange = { address = it },
+                    label = { Text("Address") },
+                    placeholder = { Text("Enter your address") },
+                    modifier = Modifier.fillMaxWidth(),
+                    isError = !isAddressValid && address.isNotEmpty(),
+                    supportingText = {
+                        if (!isAddressValid && address.isNotEmpty()) {
+                            Text(
+                                text = "Address cannot be empty",
+                                color = MaterialTheme.colorScheme.error
+                            )
+                        }
+                    },
+                    leadingIcon = {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(id = R.drawable.ic_location),
+                            contentDescription = "Address"
+                        )
+                    },
+                    singleLine = true,
+                    colors = OutlinedTextFieldDefaults.colors(
+                        focusedBorderColor = MaterialTheme.colorScheme.primary,
+                        focusedLabelColor = MaterialTheme.colorScheme.primary
+                    )
+                )
+            }
+        },
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    if (isFormValid) {
+                        onConfirm(name.trim(), address.trim())
+                    }
+                },
+                enabled = isFormValid,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary,
+                    disabledContentColor = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.38f)
+                )
+            ) {
+                Text("Save", fontWeight = FontWeight.SemiBold, fontSize = 16.sp)
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.onSurface
+                )
+            ) {
+                Text("Cancel", fontSize = 16.sp)
+            }
+        },
+        shape = RoundedCornerShape(16.dp),
+        containerColor = MaterialTheme.colorScheme.surface,
+        tonalElevation = 6.dp
+    )
 }
 
 @Composable
