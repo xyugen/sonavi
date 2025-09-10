@@ -9,7 +9,7 @@ plugins {
 
 android {
     namespace = "com.pagzone.sonavi"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.pagzone.sonavi"
@@ -40,6 +40,10 @@ android {
     buildFeatures {
         compose = true
     }
+}
+
+hilt {
+    enableAggregatingTask = false
 }
 
 dependencies {
