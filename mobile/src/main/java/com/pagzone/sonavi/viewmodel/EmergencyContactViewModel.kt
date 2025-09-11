@@ -11,6 +11,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.combine
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.launch
 
@@ -19,15 +20,26 @@ class EmergencyContactViewModel @Inject constructor(
     private val repository: EmergencyContactRepository
 ) : ViewModel() {
 
+    private val _sortAscending = MutableStateFlow(true)
+    val sortAscending: StateFlow<Boolean> = _sortAscending.asStateFlow()
+
     private val _uiState = MutableStateFlow(EmergencyContactUiState())
     val uiState: StateFlow<EmergencyContactUiState> = _uiState.asStateFlow()
 
     val emergencyContacts = repository.getAllEmergencyContacts()
+        .combine(_sortAscending) { contacts, asc ->
+            if (asc) contacts.sortedBy { it.name }
+            else contacts.sortedByDescending { it.name }
+        }
         .stateIn(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    fun toggleSort() {
+        _sortAscending.value = !_sortAscending.value
+    }
 
     fun addEmergencyContact(name: String, phoneNumber: String) {
         viewModelScope.launch {

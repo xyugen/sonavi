@@ -113,6 +113,11 @@ fun ProfilePage(
     viewModel: EmergencyContactViewModel = hiltViewModel()
 ) {
     val emergencyContacts by viewModel.emergencyContacts.collectAsState()
+    val sortAscending by viewModel.sortAscending.collectAsState()
+
+    val filterIcon = if (sortAscending)
+        ImageVector.vectorResource(id = R.drawable.ic_filter_a_z) else
+        ImageVector.vectorResource(id = R.drawable.ic_filter_z_a)
 
     Column(
         modifier = modifier
@@ -142,14 +147,14 @@ fun ProfilePage(
                 )
 
                 IconButton(
-                    onClick = { },
+                    onClick = { viewModel.toggleSort() },
                     modifier = Modifier.size(40.dp)
                 ) {
                     Icon(
-                        imageVector = ImageVector.vectorResource(id = R.drawable.ic_filter), // or ic_filter
+                        imageVector = filterIcon,
                         contentDescription = "Sort contacts",
-                        tint = MaterialTheme.colorScheme.onSurfaceVariant,
-                        modifier = Modifier.size(20.dp)
+                        tint = MaterialTheme.colorScheme.onSurface,
+                        modifier = Modifier.size(24.dp)
                     )
                 }
             }
