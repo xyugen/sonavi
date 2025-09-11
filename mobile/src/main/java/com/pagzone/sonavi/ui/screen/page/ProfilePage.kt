@@ -1,10 +1,10 @@
 package com.pagzone.sonavi.ui.screen.page
 
 import android.Manifest
+import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.ContactsContract
-import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -73,6 +73,39 @@ import com.pagzone.sonavi.ui.navigation.NavRoute
 import com.pagzone.sonavi.viewmodel.EmergencyContactViewModel
 import com.pagzone.sonavi.viewmodel.ProfileSettingsViewModel
 
+fun Context.getContactInfo(uri: Uri): EmergencyContact? {
+    contentResolver.query(uri, null, null, null, null)?.use { cursor ->
+        if (cursor.moveToFirst()) {
+            val name = cursor.getString(
+                cursor.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME)
+            )
+            val id = cursor.getString(
+                cursor.getColumnIndexOrThrow(ContactsContract.Contacts._ID)
+            )
+
+            var phoneNumber: String? = null
+            contentResolver.query(
+                ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
+                null,
+                "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
+                arrayOf(id),
+                null
+            )?.use { phoneCursor ->
+                if (phoneCursor.moveToFirst()) {
+                    phoneNumber = phoneCursor.getString(
+                        phoneCursor.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER)
+                    )
+                }
+            }
+
+            if (phoneNumber == null) return null
+
+            return EmergencyContact(name = name, number = phoneNumber)
+        }
+    }
+    return null
+}
+
 @Composable
 fun ProfilePage(
     navController: NavHostController,
@@ -127,7 +160,10 @@ fun ProfilePage(
                 verticalArrangement = Arrangement.spacedBy(8.dp)
             ) {
                 item {
-                    AddContactButton(viewModel)
+                    AddContactButton(
+                        viewModel,
+                        emergencyContacts
+                    )
                 }
 
                 items(
@@ -152,6 +188,7 @@ fun ProfilePage(
 @Composable
 fun AddContactButton(
     viewModel: EmergencyContactViewModel,
+    emergencyContacts: List<EmergencyContact>,
     modifier: Modifier = Modifier
 ) {
     val context = LocalContext.current
@@ -160,45 +197,22 @@ fun AddContactButton(
         contract = ActivityResultContracts.PickContact()
     ) { uri: Uri? ->
         uri?.let {
-            val cursor = context.contentResolver.query(
-                it,
-                null,
-                null,
-                null,
-                null
-            )
-            cursor?.use { c ->
-                if (c.moveToFirst()) {
-                    val name =
-                        c.getString(c.getColumnIndexOrThrow(ContactsContract.Contacts.DISPLAY_NAME))
-                    val id = c.getString(c.getColumnIndexOrThrow(ContactsContract.Contacts._ID))
+            val contact = context.getContactInfo(it)
+            if (contact != null) {
+                val (_, name, phoneNumber) = contact
 
-                    var phoneNumber: String? = null
-                    val phones = context.contentResolver.query(
-                        ContactsContract.CommonDataKinds.Phone.CONTENT_URI,
-                        null,
-                        "${ContactsContract.CommonDataKinds.Phone.CONTACT_ID} = ?",
-                        arrayOf(id),
-                        null
-                    )
-                    phones?.use { p ->
-                        if (p.moveToFirst()) {
-                            phoneNumber =
-                                p.getString(p.getColumnIndexOrThrow(ContactsContract.CommonDataKinds.Phone.NUMBER))
-                        }
-                    }
-
-                    Log.d("ContactPicker", "Name: $name, Number: $phoneNumber")
-                    if (phoneNumber?.isNotEmpty() == true) {
-                        viewModel.addEmergencyContact(name, phoneNumber)
-                    } else {
-                        Toast.makeText(
-                            context,
-                            "Phone number must not be empty!",
-                            Toast.LENGTH_SHORT
-                        ).show()
-                    }
+                val alreadyExists =
+                    emergencyContacts.any { contact -> contact.number == phoneNumber }
+                if (alreadyExists) {
+                    Toast.makeText(context, "Phone number is already added!", Toast.LENGTH_SHORT)
+                        .show()
+                } else {
+                    viewModel.addEmergencyContact(name, phoneNumber)
                 }
+            } else { // Phone number is null
+                Toast.makeText(context, "Phone number must not be empty!", Toast.LENGTH_SHORT)
+                    .show()
+                return@let
             }
         }
     }
