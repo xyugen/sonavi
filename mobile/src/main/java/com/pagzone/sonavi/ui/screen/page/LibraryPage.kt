@@ -127,7 +127,9 @@ fun LibraryPage(viewModel: SoundPreferencesViewModel, modifier: Modifier = Modif
             }
         }
 
-        LazyColumn {
+        LazyColumn(
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
             items(
                 items = filteredPrefs,
                 key = { it.label }
@@ -142,7 +144,6 @@ fun LibraryPage(viewModel: SoundPreferencesViewModel, modifier: Modifier = Modif
                         // Handle menu click
                     }
                 )
-                Spacer(modifier = Modifier.height(16.dp))
             }
         }
     }
@@ -254,7 +255,7 @@ fun SoundCard(
                             .size(6.dp)
                             .clip(CircleShape)
                             .background(
-                                if (sound.enabled) Color(0xFF4CAF50) else Color(0xFFFF9800)
+                                if (sound.enabled) Color(0xFF4CAF50) else Color(0xFFE18D17)
                             )
                     )
 
@@ -266,7 +267,7 @@ fun SoundCard(
                         color = if (sound.enabled) {
                             Color(0xFF4CAF50)
                         } else {
-                            Color(0xFFFF9800)
+                            Color(0xFFE18D17)
                         }
                     )
                 }
