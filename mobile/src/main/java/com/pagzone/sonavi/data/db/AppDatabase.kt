@@ -5,7 +5,7 @@ import androidx.room.RoomDatabase
 import com.pagzone.sonavi.data.dao.EmergencyContactDao
 import com.pagzone.sonavi.model.EmergencyContact
 
-@Database(entities = [EmergencyContact::class], version = 1, exportSchema = false)
+@Database(entities = [EmergencyContact::class], version = 2, exportSchema = false)
 abstract class AppDatabase : RoomDatabase() {
     abstract fun emergencyContactDao(): EmergencyContactDao
 }

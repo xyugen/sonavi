@@ -9,13 +9,22 @@ import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.animation.AnimatedVisibility
+import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.spring
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -27,6 +36,8 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Phone
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -53,6 +64,7 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
 import androidx.compose.ui.draw.shadow
@@ -179,9 +191,11 @@ fun ProfilePage(
                         contact = emergencyContact,
                         onMenuClick = { item ->
                             when (item) {
-                                "edit" -> {}
                                 "delete" -> viewModel.deleteEmergencyContact(emergencyContact)
                             }
+                        },
+                        onToggleActive = { newContact ->
+                            viewModel.updateEmergencyContact(newContact)
                         }
                     )
                 }
@@ -290,20 +304,63 @@ fun AddContactButton(
 @Composable
 fun EmergencyContactCard(
     contact: EmergencyContact,
+    onToggleActive: (EmergencyContact) -> Unit,
     onMenuClick: (String) -> Unit,
     modifier: Modifier = Modifier
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
+    // Animation for active state changes
+    val animatedScale by animateFloatAsState(
+        targetValue = if (contact.isActive) 1f else 0.985f,
+        animationSpec = spring(
+            dampingRatio = Spring.DampingRatioMediumBouncy,
+            stiffness = Spring.StiffnessLow
+        ),
+        label = "card_scale"
+    )
+
+    val animatedAlpha by animateFloatAsState(
+        targetValue = if (contact.isActive) 1f else 0.8f,
+        animationSpec = tween(500),
+        label = "card_alpha"
+    )
+
+    val statusColor by animateColorAsState(
+        targetValue = if (contact.isActive)
+            Color(0xFF55A15A) else
+            Color(0xFFB75151),
+        animationSpec = tween(500),
+        label = "card_color"
+    )
+
     Card(
-        modifier = modifier.fillMaxWidth(),
+        modifier = modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(16.dp))
+            .scale(animatedScale)
+            .alpha(animatedAlpha)
+            // Here
+            .clickable(
+                interactionSource = remember { MutableInteractionSource() }
+            ) {
+                onToggleActive(contact.copy(isActive = !contact.isActive))
+            },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primary.copy(0.15f)
+            containerColor = if (contact.isActive) {
+                MaterialTheme.colorScheme.primary.copy(0.15f)
+            } else {
+                MaterialTheme.colorScheme.outline.copy(0.06f)
+            }
         ),
         border = BorderStroke(
-            .5.dp,
-            MaterialTheme.colorScheme.primary.copy(0.175f)
+            width = if (contact.isActive) 1.dp else .5.dp,
+            color = if (contact.isActive) {
+                MaterialTheme.colorScheme.primary.copy(0.175f)
+            } else {
+                MaterialTheme.colorScheme.outline.copy(0.1f)
+            }
         )
     ) {
         Row(
@@ -318,7 +375,7 @@ fun EmergencyContactCard(
                 modifier = Modifier
                     .size(48.dp)
                     .clip(RoundedCornerShape(12.dp))
-                    .background(Color(0xFF4CAF50).copy(0.75f))
+                    .background(statusColor)
                     .scale(1.2f),
                 contentAlignment = Alignment.Center
             ) {
@@ -333,19 +390,57 @@ fun EmergencyContactCard(
             // Contact Info
             Column(
                 modifier = Modifier.weight(1f),
-                verticalArrangement = Arrangement.spacedBy(1.dp)
+                verticalArrangement = Arrangement.spacedBy(4.dp)
             ) {
-                Text(
-                    text = contact.name,
-                    style = MaterialTheme.typography.titleMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface
-                )
-                Text(
-                    text = contact.number,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(8.dp)
+                ) {
+                    Text(
+                        text = contact.name,
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.SemiBold,
+                        color = if (contact.isActive) {
+                            MaterialTheme.colorScheme.onSurface
+                        } else {
+                            MaterialTheme.colorScheme.onSurface.copy(0.7f)
+                        },
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    // Status chip
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(CircleShape)
+                            .background(statusColor)
+                            .border(
+                                width = 1.dp,
+                                color = MaterialTheme.colorScheme.surface,
+                                shape = CircleShape
+                            )
+                    )
+                }
+
+                Row(
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Phone,
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.onSurfaceVariant.copy(0.7f),
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Text(
+                        text = contact.number,
+                        style = MaterialTheme.typography.bodyMedium,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
             // Menu Button
@@ -364,7 +459,9 @@ fun EmergencyContactCard(
 
                 // Dropdown Menu
                 DropdownMenu(
-                    modifier = Modifier.padding(horizontal = 8.dp),
+                    modifier = Modifier
+                        .defaultMinSize(minWidth = 164.dp)
+                        .padding(horizontal = 8.dp),
                     expanded = showMenu,
                     onDismissRequest = { showMenu = false },
                     shape = RoundedCornerShape(12.dp),
@@ -372,15 +469,18 @@ fun EmergencyContactCard(
                     shadowElevation = 8.dp
                 ) {
                     ContactMenuItem(
-                        text = "Edit",
-                        icon = R.drawable.ic_edit,
+                        text = if (contact.isActive) "Deactivate" else "Activate",
+                        icon = if (contact.isActive) R.drawable.ic_close else R.drawable.ic_check,
                         onClick = {
-                            onMenuClick("edit")
+                            onToggleActive(contact.copy(isActive = !contact.isActive))
                             showMenu = false
                         }
                     )
 
-                    HorizontalDivider()
+                    HorizontalDivider(
+                        modifier = Modifier.padding(vertical = 4.dp),
+                        color = MaterialTheme.colorScheme.outline.copy(0.2f)
+                    )
 
                     ContactMenuItem(
                         text = "Delete",
