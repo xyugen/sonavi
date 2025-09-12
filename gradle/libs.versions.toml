@@ -1,5 +1,5 @@
 [versions]
-agp = "8.12.2"
+agp = "8.12.3"
 datastorePreferences = "1.1.7"
 hiltAndroid = "2.57.1"
 hiltNavigationFragment = "1.2.0"
