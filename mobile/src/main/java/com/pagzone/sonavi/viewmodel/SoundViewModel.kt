@@ -50,7 +50,7 @@ class SoundViewModel @Inject constructor(
     fun updateSoundProfile(
         soundId: Long,
         threshold: Float? = null,
-        vibrationPattern: List<Int>? = null,
+        vibrationPattern: List<Long>? = null,
         isCritical: Boolean? = null,
         displayName: String? = null
     ) = viewModelScope.launch {

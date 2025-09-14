@@ -25,7 +25,7 @@ data class SoundProfile(
     // Settings
     val threshold: Float = 0.5f, // Detection confidence threshold (0.0 - 1.0)
     val isCritical: Boolean = false,
-    val vibrationPattern: List<Int> = listOf(500, 200, 100), // JSON array of vibration pattern
+    val vibrationPattern: List<Long> = listOf(0, 300, 1000, 300),
 
     // Metadata
     val createdAt: Date = Date(),

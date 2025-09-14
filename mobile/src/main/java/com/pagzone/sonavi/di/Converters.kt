@@ -27,4 +27,18 @@ class Converters {
     fun fromListInt(list: List<Int>): String {
         return list.joinToString(",")
     }
+
+    @TypeConverter
+    fun fromLongList(value: String): List<Long> {
+        return try {
+            value.split(",").map { it.toLong() }
+        } catch (_: Exception) {
+            emptyList()
+        }
+    }
+
+    @TypeConverter
+    fun fromListLong(list: List<Long>): String {
+        return list.joinToString(",")
+    }
 }

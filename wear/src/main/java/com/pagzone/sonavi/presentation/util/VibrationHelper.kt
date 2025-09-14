@@ -5,7 +5,7 @@ import android.os.VibrationEffect
 import android.os.Vibrator
 
 class VibrationHelper(context: Context) {
-    private var vibrator: Vibrator = context.getSystemService(Context.VIBRATOR_SERVICE) as Vibrator
+    private val vibrator = context.getSystemService(Vibrator::class.java)
 
     private val lastDetectionTimes = mutableMapOf<String, Long>()
 

@@ -219,9 +219,10 @@ object WearRepositoryImpl : WearRepository {
         val decodedPayload = Json.decodeFromString<SoundPredictionDTO>(payload)
         val vibrationEffect = VibrationEffect.createWaveform(
             decodedPayload.vibration.timings.toLongArray(),
-            decodedPayload.vibration.amplitudes.toIntArray(),
             decodedPayload.vibration.repeat
         )
+
+        Log.d("DECODED PAYLOAD", decodedPayload.vibration.timings.toString())
 
         val shouldTrigger = vibrationHelper.shouldTrigger(decodedPayload.label)
 

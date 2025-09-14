@@ -72,22 +72,21 @@ object AudioClassifierService {
                     }
 
                     if (offset >= floatBuffer.size) {
-                        val (label, confidence) = hybridYamnetClassifier.classify(floatBuffer)
+                        val (sound, confidence) = hybridYamnetClassifier.classify(floatBuffer)
 
-                        if (confidence > Constants.Classifier.CONFIDENCE_THRESHOLD) {
+                        if (sound != null && confidence > Constants.Classifier.CONFIDENCE_THRESHOLD) {
                             ClassificationResultRepositoryImpl.addResult(
-                                ClassificationResult(label, confidence)
+                                ClassificationResult(sound.displayName, confidence)
                             )
 
                             clientDataViewModel.sendPrediction(
-                                label, confidence, VibrationEffectDTO(
-                                    timings = listOf(0, 100, 200),
-                                    amplitudes = listOf(0, 255, 0),
+                                sound.displayName, confidence, VibrationEffectDTO(
+                                    timings = sound.vibrationPattern,
                                     repeat = -1
                                 )
                             )
 
-                            Log.d("FewShot", "Label: $label, Conf: $confidence")
+                            Log.d("FewShot", "Label: ${sound.displayName}, Conf: $confidence")
                         }
 
                         offset = 0

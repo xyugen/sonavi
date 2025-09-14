@@ -11,6 +11,7 @@ import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
+import kotlinx.coroutines.cancel
 import kotlinx.coroutines.flow.first
 import kotlinx.coroutines.launch
 import org.tensorflow.lite.Interpreter
@@ -37,7 +38,8 @@ class HybridYamnetClassifier(
     private val DEFAULT_THRESHOLD = 0.5f
     private val FEWSHOT_THRESHOLD = 0.75f
 
-    private val emaScores = mutableMapOf<String, Float>()
+    // Change to store SoundProfile references instead of just display names
+    private val emaScores = mutableMapOf<SoundProfile, Float>()
 
     init {
         val modelBuffer = context.assets.open("yamnnet.tflite").use { it.readBytes() }
@@ -49,74 +51,105 @@ class HybridYamnetClassifier(
         coroutineScope.launch {
             soundRepository.getAllSounds().collect { value ->
                 sounds = value
+                // Clear EMA scores when sounds change to avoid stale references
+                emaScores.clear()
             }
         }
 
         labels = context.assets.open("yamnet_labels.txt").bufferedReader().readLines()
     }
 
-    private fun mergePredictions(yamnetScores: FloatArray): Map<String, Float> {
-        val merged = mutableMapOf<String, Float>()
+    // Return Map<SoundProfile, Float> instead of Map<String, Float>
+    private fun mergePredictions(yamnetScores: FloatArray): Map<SoundProfile, Float> {
+        val merged = mutableMapOf<SoundProfile, Float>()
 
         for (sound in sounds) {
             val sum = sound.yamnetIndices.sumOf { yamnetScores[it].toDouble() }
-            merged[sound.displayName] = sum.toFloat()
+            merged[sound] = sum.toFloat()
         }
         return merged
     }
 
-    private fun getTopPrediction(merged: Map<String, Float>): Pair<String, Float> {
-        val (label, score) = merged.maxByOrNull { it.value } ?: return "Unknown" to 0f
-        return label to score
+    // Return Pair<SoundProfile?, Float> instead of Pair<String, Float>
+    private fun getTopPrediction(merged: Map<SoundProfile, Float>): Pair<SoundProfile?, Float> {
+        val entry = merged.maxByOrNull { it.value }
+        return if (entry != null) {
+            entry.key to entry.value
+        } else {
+            null to 0f
+        }
     }
 
-    private fun updateEma(merged: Map<String, Float>) {
-        for ((label, score) in merged) {
-            val prev = emaScores[label] ?: score
-            emaScores[label] =
+    // Update to work with SoundProfile keys
+    private fun updateEma(merged: Map<SoundProfile, Float>) {
+        for ((soundProfile, score) in merged) {
+            val prev = emaScores[soundProfile] ?: score
+            emaScores[soundProfile] =
                 Constants.Classifier.SMOOTHING_ALPHA * score + (1 - Constants.Classifier.SMOOTHING_ALPHA) * prev
         }
     }
 
-    suspend fun classify(audioInput: FloatArray): Pair<String, Float> {
+    // Main classification method now returns Pair<SoundProfile?, Float>
+    fun classify(audioInput: FloatArray): Pair<SoundProfile?, Float> {
         // 1. Run inference
         val outputScores = Array(1) { FloatArray(labels.size) }
         interpreter.run(arrayOf(audioInput), outputScores)
 
-        // 2. Get allowed labels from prefs
+        // 2. Get allowed sound profiles from repository
         Log.d(
             "HybridYamnetClassifier",
             "Getting allowed prefs: $sounds"
         )
-        val allowedLabels = sounds
-            .filter { it.isEnabled } // TODO: Snoozed
-            .map { it.displayName }
-            .toSet()
+        val allowedSounds = sounds.filter { it.isEnabled } // TODO: Add snoozed check
 
-        // 3. Merge predictions (if you’re grouping multiple YAMNet labels into one)
+        // 3. Merge predictions for allowed sounds only
         val scores = outputScores[0]
-        val merged = mergePredictions(scores)
-        Log.d("HybridYamnetClassifier", "Merged: $merged")
+        val allMerged = mergePredictions(scores)
+        val allowedMerged = allMerged.filterKeys { it in allowedSounds }
 
-        // 4. Smooth scores with EMA
-        updateEma(merged)
+        Log.d("HybridYamnetClassifier", "Merged: ${allowedMerged.mapKeys { it.key.displayName }}")
 
-        // 5. Apply filtering: only keep allowed labels
-        val filteredScores = emaScores.filterKeys { it in allowedLabels }
+        // 4. Smooth scores with EMA (only for allowed sounds)
+        updateEma(allowedMerged)
+
+        // 5. Filter EMA scores to only include allowed sounds
+        val filteredScores = emaScores.filterKeys { it in allowedSounds }
 
         if (filteredScores.isEmpty()) {
             Log.d("HybridYamnetClassifier", "No allowed predictions")
-            return "" to 0f
+            return null to 0f
         }
 
-        // 6. Get top prediction among allowed
-        val top = getTopPrediction(filteredScores)
-        Log.d("HybridYamnetClassifier", "Top (filtered): $top")
+        // 6. Get top prediction among allowed sounds
+        val (topSoundProfile, topScore) = getTopPrediction(filteredScores)
+        Log.d("HybridYamnetClassifier", "Top (filtered): ${topSoundProfile?.displayName} -> $topScore")
 
-        return top
+        return topSoundProfile to topScore
     }
 
-    private fun isSnoozed(pref: SoundPreference): Boolean {
-        return pref.snoozedUntil?.let { System.currentTimeMillis() < it } ?: false
+    // Helper method if you still need just the display name
+    suspend fun classifyForDisplayName(audioInput: FloatArray): Pair<String, Float> {
+        val (soundProfile, score) = classify(audioInput)
+        return (soundProfile?.displayName ?: "") to score
+    }
+
+    // You can add threshold checking methods that work with SoundProfile
+    fun meetsThreshold(soundProfile: SoundProfile?, score: Float): Boolean {
+        return soundProfile?.let { profile ->
+            score >= profile.threshold
+        } ?: false
+    }
+
+    // Check if a sound profile is snoozed (you'll need to implement this based on your snooze logic)
+    private fun isSnoozed(soundProfile: SoundProfile): Boolean {
+        // TODO: Implement based on your snooze mechanism
+        // This might require checking a separate table or field in SoundProfile
+        return false
+    }
+
+    // Clean up resources
+    fun cleanup() {
+        coroutineScope.cancel()
+        interpreter.close()
     }
 }

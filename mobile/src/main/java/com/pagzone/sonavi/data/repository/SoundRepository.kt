@@ -29,7 +29,7 @@ class SoundRepository @Inject constructor(
         mfccEmbedding: String,
         threshold: Float = 0.5f,
         isCritical: Boolean = false,
-        vibrationPattern: List<Int> = listOf(500, 200, 100)
+        vibrationPattern: List<Long> = listOf(500, 200, 100)
     ): Long {
         val profile = SoundProfile(
             name = name,
@@ -46,7 +46,7 @@ class SoundRepository @Inject constructor(
     suspend fun updateSoundProfile(
         soundId: Long,
         threshold: Float? = null,
-        vibrationPattern: List<Int>? = null,
+        vibrationPattern: List<Long>? = null,
         isCritical: Boolean? = null,
         displayName: String? = null,
         fullProfile: SoundProfile? = null
