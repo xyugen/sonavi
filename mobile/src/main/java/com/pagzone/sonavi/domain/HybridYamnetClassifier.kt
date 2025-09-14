@@ -2,10 +2,17 @@ package com.pagzone.sonavi.domain
 
 import android.content.Context
 import android.util.Log
-import com.pagzone.sonavi.data.repository.SoundPreferencesRepositoryImpl
+import com.pagzone.sonavi.data.repository.SoundRepository
+import com.pagzone.sonavi.di.AudioClassifierEntryPoint
 import com.pagzone.sonavi.model.SoundPreference
+import com.pagzone.sonavi.model.SoundProfile
 import com.pagzone.sonavi.util.Constants
+import dagger.hilt.android.EntryPointAccessors
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.launch
 import org.tensorflow.lite.Interpreter
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
@@ -13,12 +20,22 @@ import java.nio.ByteOrder
 class HybridYamnetClassifier(
     context: Context
 ) {
+    private val soundRepository: SoundRepository by lazy {
+        val hiltEntryPoint = EntryPointAccessors.fromApplication(
+            context.applicationContext,
+            AudioClassifierEntryPoint::class.java
+        )
+        hiltEntryPoint.getSoundRepository()
+    }
+
+    private val coroutineScope = CoroutineScope(SupervisorJob() + Dispatchers.IO)
+
+    private var sounds: List<SoundProfile> = emptyList()
+
     private val interpreter: Interpreter
     private val labels: List<String>
     private val DEFAULT_THRESHOLD = 0.5f
     private val FEWSHOT_THRESHOLD = 0.75f
-
-    private val soundPreferencesRepository = SoundPreferencesRepositoryImpl
 
     private val emaScores = mutableMapOf<String, Float>()
 
@@ -29,15 +46,21 @@ class HybridYamnetClassifier(
             put(modelBuffer)
         })
 
+        coroutineScope.launch {
+            soundRepository.getAllSounds().collect { value ->
+                sounds = value
+            }
+        }
+
         labels = context.assets.open("yamnet_labels.txt").bufferedReader().readLines()
     }
 
     private fun mergePredictions(yamnetScores: FloatArray): Map<String, Float> {
         val merged = mutableMapOf<String, Float>()
 
-        for ((customLabel, indices) in soundPreferencesRepository.mergeMap) {
-            val sum = indices.sumOf { yamnetScores[it].toDouble() }
-            merged[customLabel] = sum.toFloat()
+        for (sound in sounds) {
+            val sum = sound.yamnetIndices.sumOf { yamnetScores[it].toDouble() }
+            merged[sound.displayName] = sum.toFloat()
         }
         return merged
     }
@@ -63,18 +86,11 @@ class HybridYamnetClassifier(
         // 2. Get allowed labels from prefs
         Log.d(
             "HybridYamnetClassifier",
-            "Getting allowed prefs: ${
-                soundPreferencesRepository.getPreferencesFlow(
-                    soundPreferencesRepository.mergeMap.keys.toList()
-                ).first()
-            }"
+            "Getting allowed prefs: $sounds"
         )
-        val prefs =
-            soundPreferencesRepository.getPreferencesFlow(soundPreferencesRepository.mergeMap.keys.toList())
-                .first()
-        val allowedLabels = prefs
-            .filter { it.enabled && !isSnoozed(it) }
-            .map { it.label }
+        val allowedLabels = sounds
+            .filter { it.isEnabled } // TODO: Snoozed
+            .map { it.displayName }
             .toSet()
 
         // 3. Merge predictions (if you’re grouping multiple YAMNet labels into one)

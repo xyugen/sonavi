@@ -31,8 +31,7 @@ fun MainScreen(
         AppNavHost(
             navController,
             modifier = Modifier.padding(horizontal = 21.dp),
-            clientDataViewModel = clientDataViewModel,
-            soundPreferencesViewModel = soundPreferencesViewModel
+            clientDataViewModel = clientDataViewModel
         )
     }
 }

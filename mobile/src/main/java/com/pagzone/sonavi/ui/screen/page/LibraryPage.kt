@@ -45,36 +45,39 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pagzone.sonavi.R
-import com.pagzone.sonavi.model.SoundPreference
+import com.pagzone.sonavi.model.SoundProfile
 import com.pagzone.sonavi.ui.component.CustomSearchBar
 import com.pagzone.sonavi.ui.component.SoundFilterChips
-import com.pagzone.sonavi.viewmodel.SoundPreferencesViewModel
+import com.pagzone.sonavi.viewmodel.SoundViewModel
 
 @Composable
-fun LibraryPage(viewModel: SoundPreferencesViewModel, modifier: Modifier = Modifier) {
+fun LibraryPage(
+    modifier: Modifier = Modifier,
+    viewModel: SoundViewModel = hiltViewModel()
+) {
     var query by rememberSaveable { mutableStateOf("") }
     val filters = listOf("All", "Recorded", "Uploaded", "Built-in")
     var selectedFilter by rememberSaveable { mutableStateOf<String?>("All") }
 
-    val prefs by viewModel.preferencesFlow
-        .collectAsStateWithLifecycle(initialValue = emptyList())
+    val sounds by viewModel.sounds.collectAsStateWithLifecycle()
 
     // Filter sounds based on search query
-    val filteredPrefs = remember(prefs, query) {
+    val filteredPrefs = remember(sounds, query) {
         if (query.isBlank()) {
-            prefs
+            sounds
         } else {
-            prefs.filter { pref ->
-                pref.label.contains(query, ignoreCase = true)
+            sounds.filter { pref ->
+                pref.displayName.contains(query, ignoreCase = true)
             }
         }
     }
 
     // Check if all sounds are enabled
     val allEnabled = remember(filteredPrefs) {
-        filteredPrefs.isNotEmpty() && filteredPrefs.all { it.enabled }
+        filteredPrefs.isNotEmpty() && filteredPrefs.all { it.isEnabled }
     }
 
     Column(
@@ -112,8 +115,8 @@ fun LibraryPage(viewModel: SoundPreferencesViewModel, modifier: Modifier = Modif
                 TextButton(
                     onClick = {
                         val targetState = !allEnabled
-                        filteredPrefs.forEach { pref ->
-                            viewModel.toggleSound(pref.label, targetState)
+                        filteredPrefs.forEach { sound ->
+                            viewModel.setSoundProfileEnabled(sound.id, targetState)
                         }
                     }
                 ) {
@@ -132,13 +135,12 @@ fun LibraryPage(viewModel: SoundPreferencesViewModel, modifier: Modifier = Modif
         ) {
             items(
                 items = filteredPrefs,
-                key = { it.label }
-            ) { pref ->
+                key = { it.id }
+            ) { sound ->
                 SoundCard(
-                    sound = pref,
+                    sound = sound,
                     onToggleClick = { enabled ->
-                        Log.d("LibraryPage", "Toggling ${pref.label} to enabled: $enabled")
-                        viewModel.toggleSound(pref.label, enabled)
+                        viewModel.setSoundProfileEnabled(sound.id, enabled)
                     },
                     onMenuClick = {
                         // Handle menu click
@@ -151,31 +153,31 @@ fun LibraryPage(viewModel: SoundPreferencesViewModel, modifier: Modifier = Modif
 
 @Composable
 fun SoundCard(
-    sound: SoundPreference,
+    sound: SoundProfile,
     modifier: Modifier = Modifier,
     onToggleClick: (enabled: Boolean) -> Unit = {},
     onMenuClick: () -> Unit = {}
 ) {
-    val cardBackgroundColor = if (sound.enabled) MaterialTheme.colorScheme.secondary else
+    val cardBackgroundColor = if (sound.isEnabled) MaterialTheme.colorScheme.secondary else
         MaterialTheme.colorScheme.surfaceVariant
-    val iconButtonColor = if (sound.enabled) MaterialTheme.colorScheme.primary else
+    val iconButtonColor = if (sound.isEnabled) MaterialTheme.colorScheme.primary else
         MaterialTheme.colorScheme.secondary
-    val icon = if (sound.enabled)
+    val icon = if (sound.isEnabled)
         ImageVector.vectorResource(id = R.drawable.ic_sensors) else
         ImageVector.vectorResource(id = R.drawable.ic_sensors_off)
 
-    val iconScale = if (sound.enabled) 1.1f else 1f
-    val contentAlpha = if (sound.enabled) 1f else 0.7f
+    val iconScale = if (sound.isEnabled) 1.1f else 1f
+    val contentAlpha = if (sound.isEnabled) 1f else 0.7f
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .clickable { onToggleClick(!sound.enabled) },
+            .clickable { onToggleClick(!sound.isEnabled) },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = cardBackgroundColor),
         elevation = CardDefaults.cardElevation(
-            defaultElevation = if (sound.enabled) 4.dp else 1.dp
+            defaultElevation = if (sound.isEnabled) 4.dp else 1.dp
         )
     ) {
         Row(
@@ -195,7 +197,7 @@ fun SoundCard(
             ) {
                 Icon(
                     imageVector = icon,
-                    contentDescription = sound.label,
+                    contentDescription = sound.displayName,
                     tint = Color.White,
                     modifier = Modifier.size(24.dp)
                 )
@@ -213,7 +215,7 @@ fun SoundCard(
                     modifier = Modifier.fillMaxWidth()
                 ) {
                     Text(
-                        text = sound.label,
+                        text = sound.displayName,
                         style = MaterialTheme.typography.bodyLarge.copy(
                             fontWeight = FontWeight.SemiBold,
                             fontSize = 16.sp
@@ -255,16 +257,16 @@ fun SoundCard(
                             .size(6.dp)
                             .clip(CircleShape)
                             .background(
-                                if (sound.enabled) Color(0xFF4CAF50) else Color(0xFFE18D17)
+                                if (sound.isEnabled) Color(0xFF4CAF50) else Color(0xFFE18D17)
                             )
                     )
 
                     Text(
-                        text = if (sound.enabled) "Listening" else "Paused",
+                        text = if (sound.isEnabled) "Listening" else "Paused",
                         style = MaterialTheme.typography.bodySmall.copy(
                             fontSize = 12.sp
                         ),
-                        color = if (sound.enabled) {
+                        color = if (sound.isEnabled) {
                             Color(0xFF4CAF50)
                         } else {
                             Color(0xFFE18D17)

@@ -13,14 +13,12 @@ import com.pagzone.sonavi.ui.screen.page.HomePage
 import com.pagzone.sonavi.ui.screen.page.LibraryPage
 import com.pagzone.sonavi.ui.screen.page.ProfilePage
 import com.pagzone.sonavi.viewmodel.ClientDataViewModel
-import com.pagzone.sonavi.viewmodel.SoundPreferencesViewModel
 
 @Composable
 fun AppNavHost(
     navController: NavHostController,
     modifier: Modifier = Modifier,
-    clientDataViewModel: ClientDataViewModel = viewModel(),
-    soundPreferencesViewModel: SoundPreferencesViewModel = viewModel()
+    clientDataViewModel: ClientDataViewModel = viewModel()
 ) {
     NavHost(
         navController = navController, startDestination = NavRoute.Home.route,
@@ -32,7 +30,7 @@ fun AppNavHost(
             AddSoundPage(modifier)
         }
         composable(NavRoute.Library.route) {
-            LibraryPage(soundPreferencesViewModel, modifier)
+            LibraryPage(modifier)
         }
 
         // Not in bottom navigation

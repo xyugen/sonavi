@@ -24,5 +24,8 @@ class Constants {
     }
     object RoomKeys {
         const val EMERGENCY_CONTACTS = "emergency_contacts"
+        const val SOUND_PROFILES = "sound_profiles"
+        const val SOUND_PREFERENCES = "sound_preferences"
+        const val VIBRATION_PATTERNS = "vibration_patterns"
     }
 }

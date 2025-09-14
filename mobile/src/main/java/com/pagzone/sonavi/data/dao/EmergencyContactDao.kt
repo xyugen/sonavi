@@ -23,4 +23,7 @@ interface EmergencyContactDao {
 
     @Query("SELECT * FROM ${Constants.RoomKeys.EMERGENCY_CONTACTS}")
     fun getAll(): Flow<List<EmergencyContact>>
+
+    @Query("SELECT * FROM emergency_contacts WHERE isActive = 1")
+    suspend fun getActiveContacts(): List<EmergencyContact>
 }
