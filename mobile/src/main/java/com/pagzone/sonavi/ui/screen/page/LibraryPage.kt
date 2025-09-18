@@ -97,7 +97,7 @@ fun LibraryPage(
     var selectedSound by remember { mutableStateOf<SoundProfile?>(null) }
 
     var query by rememberSaveable { mutableStateOf("") }
-    val filters = listOf("All", "Recorded", "Uploaded", "Built-in")
+    val filters = listOf("All", "Built-in", "Critical")
     var selectedFilter by rememberSaveable { mutableStateOf<String?>("All") }
 
     val sounds by viewModel.sounds.collectAsStateWithLifecycle()
@@ -121,6 +121,7 @@ fun LibraryPage(
                 filtered = filtered.filter { sound ->
                     when (selectedFilter) {
                         "Built-in" -> sound.isBuiltIn
+                        "Critical" -> sound.isCritical
                         else -> true
                     }
                 }
