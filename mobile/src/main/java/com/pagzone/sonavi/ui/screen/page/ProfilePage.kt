@@ -45,7 +45,6 @@ import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.CircularProgressIndicator
 import androidx.compose.material3.DropdownMenu
-import androidx.compose.material3.DropdownMenuItem
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
@@ -81,6 +80,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.navigation.NavHostController
 import com.pagzone.sonavi.R
 import com.pagzone.sonavi.model.EmergencyContact
+import com.pagzone.sonavi.ui.component.CustomMenuItem
 import com.pagzone.sonavi.ui.navigation.NavRoute
 import com.pagzone.sonavi.viewmodel.EmergencyContactViewModel
 import com.pagzone.sonavi.viewmodel.ProfileSettingsViewModel
@@ -468,7 +468,7 @@ fun EmergencyContactCard(
                     containerColor = MaterialTheme.colorScheme.surface,
                     shadowElevation = 8.dp
                 ) {
-                    ContactMenuItem(
+                    CustomMenuItem(
                         text = if (contact.isActive) "Deactivate" else "Activate",
                         icon = if (contact.isActive) R.drawable.ic_close else R.drawable.ic_check,
                         onClick = {
@@ -482,7 +482,7 @@ fun EmergencyContactCard(
                         color = MaterialTheme.colorScheme.outline.copy(0.2f)
                     )
 
-                    ContactMenuItem(
+                    CustomMenuItem(
                         text = "Delete",
                         icon = R.drawable.ic_trash_x,
                         onClick = {
@@ -495,48 +495,6 @@ fun EmergencyContactCard(
             }
         }
     }
-}
-
-@Composable
-fun ContactMenuItem(
-    text: String,
-    icon: Int,
-    onClick: () -> Unit,
-    isDestructive: Boolean = false,
-    modifier: Modifier = Modifier
-) {
-    val textColor = if (isDestructive)
-        MaterialTheme.colorScheme.error
-    else
-        MaterialTheme.colorScheme.onSurface
-
-    val iconColor = if (isDestructive)
-        MaterialTheme.colorScheme.error
-    else
-        MaterialTheme.colorScheme.onSurfaceVariant
-
-    DropdownMenuItem(
-        onClick = onClick,
-        modifier = modifier,
-        text = {
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(12.dp)
-            ) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(id = icon),
-                    contentDescription = null,
-                    tint = iconColor,
-                    modifier = Modifier.size(20.dp)
-                )
-                Text(
-                    text = text,
-                    style = MaterialTheme.typography.bodyMedium,
-                    color = textColor
-                )
-            }
-        }
-    )
 }
 
 @Composable

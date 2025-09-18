@@ -13,6 +13,9 @@ class Constants {
         const val CONFIDENCE_THRESHOLD = 0.6f
         const val SMOOTHING_ALPHA = 0.75f
     }
+    object SoundProfile {
+        val DEFAULT_VIBRATION_PATTERN = listOf<Long>(0, 300, 1000, 300)
+    }
     object Capabilities {
         const val WEAR_CAPABILITY = "wear"
     }

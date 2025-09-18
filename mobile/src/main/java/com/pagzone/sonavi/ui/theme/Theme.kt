@@ -11,7 +11,15 @@ private val LightColorScheme = lightColorScheme(
     tertiary = Pink40,
     surface = Gray10,
     onSurface = Gray90,
+    surfaceDim = Gray30,
     surfaceVariant = Blue10,
+    primaryContainer = Blue15,
+    onPrimaryContainer = Blue60,
+    secondaryContainer = Blue16,
+    onSecondaryContainer = Blue55,
+    error = Red70,
+    errorContainer = Red20,
+    onErrorContainer = Red80
 
     /* Other default colors to override
     background = Color(0xFFFFFBFE),

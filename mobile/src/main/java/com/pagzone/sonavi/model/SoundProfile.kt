@@ -2,7 +2,9 @@ package com.pagzone.sonavi.model
 
 import androidx.room.Entity
 import androidx.room.PrimaryKey
+import com.pagzone.sonavi.util.Constants.Classifier.CONFIDENCE_THRESHOLD
 import com.pagzone.sonavi.util.Constants.RoomKeys.SOUND_PROFILES
+import com.pagzone.sonavi.util.Constants.SoundProfile.DEFAULT_VIBRATION_PATTERN
 import java.util.Date
 
 @Entity(tableName = SOUND_PROFILES)
@@ -23,9 +25,9 @@ data class SoundProfile(
     val mfccEmbedding: String? = null, // For custom sounsd
 
     // Settings
-    val threshold: Float = 0.5f, // Detection confidence threshold (0.0 - 1.0)
+    val threshold: Float = CONFIDENCE_THRESHOLD, // Detection confidence threshold (0.0 - 1.0)
     val isCritical: Boolean = false,
-    val vibrationPattern: List<Long> = listOf(0, 300, 1000, 300),
+    val vibrationPattern: List<Long> = DEFAULT_VIBRATION_PATTERN,
 
     // Metadata
     val createdAt: Date = Date(),
