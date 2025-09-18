@@ -2,9 +2,10 @@ package com.pagzone.sonavi.ui.theme
 
 import androidx.compose.ui.graphics.Color
 
-val Pink80 = Color(0xFFEFB8C8)
-
+val Pink70 = Color(0xFF6F334A)
 val Pink40 = Color(0xFF7D5260)
+val Pink30 = Color(0xFFEFB8C8)
+val Pink20 = Color(0xFFFFD9E3)
 
 val Blue80 = Color(0xFF4758B5)
 val Blue75 = Color(0xFF3E66B5)
@@ -22,6 +23,7 @@ val Gray90 = Color(0xFF212121)
 val Gray30 = Color(0xFFD7DADF)
 val Gray20 = Color(0xFFE0E0E0)
 val Gray10 = Color(0xFFF5F4F3)
+val Gray = Color(0xFFEBEEF3)
 
 val Red80 = Color(0xFF93000A)
 val Red70 = Color(0xFFBA1A1A)
