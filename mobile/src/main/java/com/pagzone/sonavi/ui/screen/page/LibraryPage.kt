@@ -155,6 +155,7 @@ fun LibraryPage(
         CustomSearchBar(
             query,
             onQueryChange = { query = it },
+            onClearQuery = { query = "" },
             placeholder = {
                 Text("Search sounds...")
             }
@@ -233,24 +234,72 @@ private fun StatsAndToggleSection(
     allEnabled: Boolean,
     onToggleAllClick: () -> Unit
 ) {
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
+    Card(
+        modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Text(
-            text = "$soundCount sound${if (soundCount != 1) "s" else ""}",
-            style = MaterialTheme.typography.bodyMedium,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-
-        TextButton(onClick = onToggleAllClick) {
-            Text(
-                text = if (allEnabled) "Disable All" else "Enable All",
-                style = MaterialTheme.typography.bodyMedium.copy(
-                    fontWeight = FontWeight.Medium
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 10.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                // Sound count with icon
+                Icon(
+                    imageVector = ImageVector.vectorResource(R.drawable.ic_music_note),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(16.dp)
                 )
-            )
+
+                Text(
+                    text = "$soundCount sound${if (soundCount != 1) "s" else ""}",
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+            }
+
+            // Custom button to control sizing
+            Surface(
+                onClick = onToggleAllClick,
+                shape = RoundedCornerShape(8.dp),
+                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                modifier = Modifier.clip(RoundedCornerShape(8.dp))
+            ) {
+                Row(
+                    modifier = Modifier.padding(horizontal = 12.dp, vertical = 6.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(4.dp)
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(
+                            if (allEnabled) R.drawable.ic_sensors_off else R.drawable.ic_sensors
+                        ),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(14.dp)
+                    )
+
+                    Text(
+                        text = if (allEnabled) "Disable All" else "Enable All",
+                        style = MaterialTheme.typography.bodyMedium.copy(
+                            fontWeight = FontWeight.SemiBold
+                        ),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
         }
     }
 }
