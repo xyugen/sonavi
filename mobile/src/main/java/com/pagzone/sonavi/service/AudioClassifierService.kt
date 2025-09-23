@@ -74,7 +74,7 @@ object AudioClassifierService {
                     if (offset >= floatBuffer.size) {
                         val (sound, confidence) = hybridYamnetClassifier.classify(floatBuffer)
 
-                        if (sound != null && confidence > Constants.Classifier.CONFIDENCE_THRESHOLD) {
+                        if (sound != null && confidence >= sound.threshold) {
                             ClassificationResultRepositoryImpl.addResult(
                                 ClassificationResult(sound.displayName, confidence)
                             )
