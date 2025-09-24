@@ -12,12 +12,15 @@ import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.aspectRatio
 import androidx.compose.foundation.layout.defaultMinSize
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -28,14 +31,20 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.grid.GridCells
+import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
+import androidx.compose.foundation.lazy.grid.items
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
+import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
+import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
@@ -56,11 +65,14 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.derivedStateOf
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableFloatStateOf
+import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
@@ -74,6 +86,7 @@ import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -95,13 +108,15 @@ fun LibraryPage(
     modifier: Modifier = Modifier,
     viewModel: SoundViewModel = hiltViewModel()
 ) {
-    var selectedSound by remember { mutableStateOf<SoundProfile?>(null) }
+    var selectedEditSound by remember { mutableStateOf<SoundProfile?>(null) }
+    var selectedSnoozeSound by remember { mutableStateOf<SoundProfile?>(null) }
 
     var query by rememberSaveable { mutableStateOf("") }
-    val filters = listOf("All", "Built-in", "Critical")
+    val filters = listOf("All", "Built-in", "Critical", "Snoozed")
     var selectedFilter by rememberSaveable { mutableStateOf<String?>("All") }
 
     val sounds by viewModel.sounds.collectAsStateWithLifecycle()
+    val snoozeStatuses by viewModel.snoozeStatuses.collectAsStateWithLifecycle()
 
     val context = LocalContext.current
 
@@ -123,6 +138,7 @@ fun LibraryPage(
                     when (selectedFilter) {
                         "Built-in" -> sound.isBuiltIn
                         "Critical" -> sound.isCritical
+                        "Snoozed" -> snoozeStatuses[sound.id] ?: false
                         else -> true
                     }
                 }
@@ -180,11 +196,14 @@ fun LibraryPage(
         // Sound List
         SoundList(
             sounds = filteredSounds,
+            snoozeStatuses = snoozeStatuses,
             onToggleSound = viewModel::setSoundProfileEnabled,
-            onEditSound = { selectedSound = it }
+            onEditSound = { selectedEditSound = it },
+            onSnoozeSound = { selectedSnoozeSound = it },
+            onUnsnoozeSound = { viewModel.unsnoozeSound(it.id) }
         )
 
-        selectedSound?.let { soundProfile ->
+        selectedEditSound?.let { soundProfile ->
             EditModalSheet(
                 showSheet = true,
                 soundProfile = soundProfile,
@@ -193,7 +212,17 @@ fun LibraryPage(
                     Toast.makeText(context, "Sound profile has been saved!", Toast.LENGTH_SHORT)
                         .show()
                 },
-                onDismissRequest = { selectedSound = null },
+                onDismissRequest = { selectedEditSound = null },
+            )
+        }
+
+        selectedSnoozeSound?.let { soundProfile ->
+            SnoozeBottomSheet(
+                soundProfile.displayName,
+                onDismissRequest = { selectedSnoozeSound = null },
+                onSnooze = { minutes ->
+                    viewModel.snoozeSound(soundProfile.id, minutes)
+                }
             )
         }
     }
@@ -202,8 +231,11 @@ fun LibraryPage(
 @Composable
 private fun SoundList(
     sounds: List<SoundProfile>,
+    snoozeStatuses: Map<Long, Boolean>,
     onToggleSound: (Long, Boolean) -> Unit,
-    onEditSound: (SoundProfile) -> Unit
+    onEditSound: (SoundProfile) -> Unit,
+    onSnoozeSound: (SoundProfile) -> Unit,
+    onUnsnoozeSound: (SoundProfile) -> Unit
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -219,9 +251,12 @@ private fun SoundList(
                 onToggleClick = { enabled ->
                     onToggleSound(sound.id, enabled)
                 },
+                onUnsnoozeClick = { onUnsnoozeSound(sound) },
+                isSnoozed = snoozeStatuses[sound.id] ?: false,
                 onMenuClick = { action ->
                     when (action) {
                         "edit" -> onEditSound(sound)
+                        "snooze" -> onSnoozeSound(sound)
                     }
                 }
             )
@@ -300,6 +335,417 @@ private fun StatsAndToggleSection(
                             fontWeight = FontWeight.SemiBold
                         ),
                         color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+    }
+}
+
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun SnoozeBottomSheet(
+    soundName: String,
+    onDismissRequest: () -> Unit,
+    onSnooze: (durationMinutes: Int) -> Unit
+) {
+    val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
+    val quickDurations = listOf(
+        5 to "5 min",
+        15 to "15 min",
+        30 to "30 min",
+        60 to "1 hour",
+        120 to "2 hours",
+        480 to "8 hours"
+    )
+
+    var showCustomDialog by remember { mutableStateOf(false) }
+
+    ModalBottomSheet(
+        onDismissRequest = onDismissRequest,
+        sheetState = sheetState,
+        containerColor = MaterialTheme.colorScheme.surface,
+        contentColor = MaterialTheme.colorScheme.onSurface,
+        dragHandle = {
+            Surface(
+                modifier = Modifier
+                    .padding(vertical = 12.dp)
+                    .size(width = 36.dp, height = 4.dp),
+                shape = RoundedCornerShape(2.dp),
+                color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+            ) {}
+        }
+    ) {
+        Column(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(horizontal = 24.dp)
+                .padding(bottom = 32.dp),
+            verticalArrangement = Arrangement.spacedBy(20.dp)
+        ) {
+            // Header with better visual hierarchy
+            Column(
+                modifier = Modifier.fillMaxWidth(),
+                verticalArrangement = Arrangement.spacedBy(4.dp)
+            ) {
+                Row(
+                    modifier = Modifier.fillMaxWidth(),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.Top
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.ic_snooze),
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(28.dp)
+                    )
+
+                    IconButton(
+                        onClick = onDismissRequest,
+                        modifier = Modifier.offset(x = 8.dp, y = (-8).dp)
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Close,
+                            contentDescription = "Close",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+
+                Text(
+                    text = "Snooze Detection",
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.SemiBold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface
+                )
+
+                Text(
+                    text = "Temporarily pause \"$soundName\" detection",
+                    style = MaterialTheme.typography.bodyMedium,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            // Quick duration options with improved grid
+            LazyVerticalGrid(
+                columns = GridCells.Fixed(3),
+                verticalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                items(quickDurations) { (minutes, label) ->
+                    SnoozeOptionCard(
+                        label = label,
+                        minutes = minutes,
+                        onClick = {
+                            onSnooze(minutes)
+                            onDismissRequest()
+                        }
+                    )
+                }
+            }
+
+            // Custom duration option with better styling
+            Card(
+                onClick = { showCustomDialog = true },
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                ),
+                border = BorderStroke(
+                    1.dp,
+                    MaterialTheme.colorScheme.primary.copy(alpha = 0.3f)
+                ),
+                shape = RoundedCornerShape(16.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.Center,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.ic_snooze), // TODO: schedule icon
+                        contentDescription = null,
+                        tint = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.size(20.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        text = "Custom Duration",
+                        style = MaterialTheme.typography.bodyLarge.copy(
+                            fontWeight = FontWeight.Medium
+                        ),
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                }
+            }
+        }
+    }
+
+    // Custom duration dialog
+    if (showCustomDialog) {
+        CustomSnoozeDialog(
+            onDismiss = { showCustomDialog = false },
+            onConfirm = { minutes ->
+                onSnooze(minutes)
+                showCustomDialog = false
+                onDismissRequest()
+            }
+        )
+    }
+}
+
+@Composable
+private fun SnoozeOptionCard(
+    label: String,
+    minutes: Int,
+    onClick: () -> Unit
+) {
+    val interactionSource = remember { MutableInteractionSource() }
+    val isPressed by interactionSource.collectIsPressedAsState()
+
+    val scale by animateFloatAsState(
+        targetValue = if (isPressed) 0.95f else 1f,
+        animationSpec = spring(stiffness = Spring.StiffnessHigh),
+        label = "cardScale"
+    )
+
+    Card(
+        onClick = onClick,
+        modifier = Modifier
+            .aspectRatio(1.2f)
+            .scale(scale),
+        interactionSource = interactionSource,
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant
+        ),
+        elevation = CardDefaults.cardElevation(
+            defaultElevation = 2.dp,
+            pressedElevation = 6.dp
+        ),
+        shape = RoundedCornerShape(16.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .fillMaxSize()
+                .padding(12.dp),
+            contentAlignment = Alignment.Center
+        ) {
+            Column(
+                horizontalAlignment = Alignment.CenterHorizontally,
+                verticalArrangement = Arrangement.Center
+            ) {
+                // Duration icon based on time length
+                Icon(
+                    imageVector = when {
+                        minutes <= 15 -> ImageVector.vectorResource(R.drawable.ic_snooze) // TODO: timer icon
+                        minutes <= 60 -> ImageVector.vectorResource(R.drawable.ic_snooze) // TODO: schedule icon
+                        else -> ImageVector.vectorResource(R.drawable.ic_snooze)// TODO: watchlater icon
+                    },
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(24.dp)
+                )
+
+                Spacer(Modifier.height(8.dp))
+
+                Text(
+                    text = label,
+                    style = MaterialTheme.typography.bodyMedium.copy(
+                        fontWeight = FontWeight.Medium
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    textAlign = TextAlign.Center,
+                    maxLines = 1,
+                    overflow = TextOverflow.Ellipsis
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun CustomSnoozeDialog(
+    onDismiss: () -> Unit,
+    onConfirm: (minutes: Int) -> Unit
+) {
+    var hours by remember { mutableIntStateOf(0) }
+    var minutes by remember { mutableIntStateOf(15) }
+
+    val totalMinutes = hours * 60 + minutes
+    val isValid = totalMinutes > 0
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        icon = {
+            Icon(
+                imageVector = ImageVector.vectorResource(R.drawable.ic_snooze), // TODO: schedule icon
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(24.dp)
+            )
+        },
+        title = {
+            Text(
+                text = "Custom Duration",
+                style = MaterialTheme.typography.headlineSmall
+            )
+        },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(20.dp),
+                modifier = Modifier.fillMaxWidth()
+            ) {
+                // Hours picker with better styling
+                TimePickerRow(
+                    label = "Hours",
+                    value = hours,
+                    onDecrease = { if (hours > 0) hours-- },
+                    onIncrease = { if (hours < 23) hours++ },
+                    canDecrease = hours > 0,
+                    canIncrease = hours < 23
+                )
+
+                // Minutes picker
+                TimePickerRow(
+                    label = "Minutes",
+                    value = minutes,
+                    onDecrease = { if (minutes >= 5) minutes -= 5 },
+                    onIncrease = { if (minutes <= 55) minutes += 5 },
+                    canDecrease = minutes > 0,
+                    canIncrease = minutes < 60
+                )
+
+                // Duration preview with better styling
+                if (isValid) {
+                    Card(
+                        modifier = Modifier.fillMaxWidth(),
+                        colors = CardDefaults.cardColors(
+                            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+                        ),
+                        shape = RoundedCornerShape(12.dp)
+                    ) {
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(12.dp),
+                            horizontalArrangement = Arrangement.Center,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Icon(
+                                imageVector = Icons.Default.Info,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary,
+                                modifier = Modifier.size(16.dp)
+                            )
+                            Spacer(Modifier.width(8.dp))
+                            Text(
+                                text = "Duration: ${formatDuration(totalMinutes)}",
+                                style = MaterialTheme.typography.bodyMedium.copy(
+                                    fontWeight = FontWeight.Medium
+                                ),
+                                color = MaterialTheme.colorScheme.primary
+                            )
+                        }
+                    }
+                }
+            }
+        },
+        confirmButton = {
+            Button(
+                onClick = { onConfirm(totalMinutes) },
+                enabled = isValid,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(
+                    imageVector = ImageVector.vectorResource(R.drawable.ic_snooze),
+                    contentDescription = null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Snooze")
+            }
+        },
+        dismissButton = {
+            TextButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Cancel")
+            }
+        },
+        shape = RoundedCornerShape(20.dp)
+    )
+}
+
+@Composable
+private fun TimePickerRow(
+    label: String,
+    value: Int,
+    onDecrease: () -> Unit,
+    onIncrease: () -> Unit,
+    canDecrease: Boolean,
+    canIncrease: Boolean
+) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyLarge.copy(
+                fontWeight = FontWeight.Medium
+            ),
+            color = MaterialTheme.colorScheme.onSurface,
+            modifier = Modifier.width(80.dp)
+        )
+
+        Card(
+            shape = RoundedCornerShape(16.dp),
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(4.dp),
+                modifier = Modifier.padding(4.dp)
+            ) {
+                IconButton(
+                    onClick = onDecrease,
+                    enabled = canDecrease,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.ic_close), // TODO: remove icon
+                        contentDescription = "Decrease",
+                        modifier = Modifier.size(20.dp)
+                    )
+                }
+
+                Text(
+                    text = value.toString(),
+                    style = MaterialTheme.typography.headlineSmall.copy(
+                        fontWeight = FontWeight.Bold
+                    ),
+                    color = MaterialTheme.colorScheme.onSurface,
+                    modifier = Modifier.width(40.dp),
+                    textAlign = TextAlign.Center
+                )
+
+                IconButton(
+                    onClick = onIncrease,
+                    enabled = canIncrease,
+                    modifier = Modifier.size(36.dp)
+                ) {
+                    Icon(
+                        imageVector = Icons.Default.Add,
+                        contentDescription = "Increase",
+                        modifier = Modifier.size(20.dp)
                     )
                 }
             }
@@ -980,27 +1426,37 @@ fun EditModalSheet(
 fun SoundCard(
     sound: SoundProfile,
     modifier: Modifier = Modifier,
+    isSnoozed: Boolean = false,
     onToggleClick: (enabled: Boolean) -> Unit = {},
+    onUnsnoozeClick: () -> Unit = {},
     onMenuClick: (String) -> Unit,
 ) {
     var showMenu by remember { mutableStateOf(false) }
 
-    val cardBackgroundColor = if (sound.isEnabled) MaterialTheme.colorScheme.secondary else
-        MaterialTheme.colorScheme.surfaceVariant
-    val iconButtonColor = if (sound.isEnabled) MaterialTheme.colorScheme.primary else
-        MaterialTheme.colorScheme.secondary
-    val icon = if (sound.isEnabled)
-        ImageVector.vectorResource(id = R.drawable.ic_sensors) else
-        ImageVector.vectorResource(id = R.drawable.ic_sensors_off)
+    val cardBackgroundColor =
+        if (isSnoozed) Color(0xFFE0DBB7)
+        else if (sound.isEnabled) MaterialTheme.colorScheme.secondary
+        else MaterialTheme.colorScheme.surfaceVariant
+    val iconButtonColor =
+        if (isSnoozed) Color(0xFFE18D17)
+        else if (sound.isEnabled) MaterialTheme.colorScheme.primary
+        else MaterialTheme.colorScheme.secondary
+    val icon =
+        if (isSnoozed) ImageVector.vectorResource(id = R.drawable.ic_snooze)
+        else if (sound.isEnabled) ImageVector.vectorResource(id = R.drawable.ic_sensors)
+        else ImageVector.vectorResource(id = R.drawable.ic_sensors_off)
 
-    val iconScale = if (sound.isEnabled) 1.1f else 1f
-    val contentAlpha = if (sound.isEnabled) 1f else 0.7f
+    val iconScale = if (sound.isEnabled || isSnoozed) 1.1f else 1f
+    val contentAlpha = if (sound.isEnabled || isSnoozed) 1f else 0.7f
 
     Card(
         modifier = modifier
             .fillMaxWidth()
             .clip(RoundedCornerShape(16.dp))
-            .clickable { onToggleClick(!sound.isEnabled) },
+            .clickable {
+                if (isSnoozed) onUnsnoozeClick()
+                else onToggleClick(!sound.isEnabled)
+            },
         shape = RoundedCornerShape(16.dp),
         colors = CardDefaults.cardColors(containerColor = cardBackgroundColor),
         elevation = CardDefaults.cardElevation(
@@ -1027,12 +1483,30 @@ fun SoundCard(
                         .scale(iconScale),
                     contentAlignment = Alignment.Center
                 ) {
-                    Icon(
-                        imageVector = icon,
-                        contentDescription = sound.displayName,
-                        tint = Color.White,
-                        modifier = Modifier.size(24.dp)
-                    )
+                    Column(
+                        horizontalAlignment = Alignment.CenterHorizontally
+                    ) {
+                        Icon(
+                            imageVector = icon,
+                            contentDescription = sound.displayName,
+                            tint = Color.White,
+                            modifier = Modifier.size(24.dp)
+                        )
+
+                        if (isSnoozed) {
+                            val remainingMinutes = sound.snoozedUntil?.let { date ->
+                                val diffMs = date.time - System.currentTimeMillis()
+                                if (diffMs > 0) diffMs / 60_000 else 0
+                            } ?: 0
+
+                            Text(
+                                text = formatDuration(remainingMinutes.toInt()),
+                                style = MaterialTheme.typography.labelSmall,
+                                fontSize = 8.sp,
+                                color = Color.White
+                            )
+                        }
+                    }
                 }
 
                 // Custom vibration indicator badge (positioned outside clipping area)
@@ -1112,20 +1586,30 @@ fun SoundCard(
                                 .size(6.dp)
                                 .clip(CircleShape)
                                 .background(
-                                    if (sound.isEnabled) Color(0xFF4CAF50) else Color(0xFFE18D17)
+                                    if (isSnoozed)
+                                        Color(0xFFE18D17)
+                                    else if (sound.isEnabled)
+                                        Color(0xFF4CAF50)
+                                    else
+                                        Color(0xFF1768E1)
                                 )
                         )
 
                         Text(
-                            text = if (sound.isEnabled) "Listening" else "Paused",
+                            text =
+                                if (isSnoozed) "Snoozed"
+                                else if (sound.isEnabled) "Listening"
+                                else "Paused",
                             style = MaterialTheme.typography.bodySmall.copy(
                                 fontSize = 12.sp
                             ),
-                            color = if (sound.isEnabled) {
-                                Color(0xFF4CAF50)
-                            } else {
-                                Color(0xFFE18D17)
-                            }
+                            color =
+                                if (isSnoozed)
+                                    Color(0xFFE18D17)
+                                else if (sound.isEnabled)
+                                    Color(0xFF4CAF50)
+                                else
+                                    Color(0xFF1768E1)
                         )
                     }
 
@@ -1212,6 +1696,15 @@ fun SoundCard(
                         }
                     )
 
+                    CustomMenuItem(
+                        text = "Snooze",
+                        icon = R.drawable.ic_snooze,
+                        onClick = {
+                            onMenuClick("snooze")
+                            showMenu = false
+                        }
+                    )
+
                     if (!sound.isBuiltIn) {
                         HorizontalDivider(
                             modifier = Modifier.padding(vertical = 4.dp),
@@ -1230,6 +1723,22 @@ fun SoundCard(
                     }
                 }
             }
+        }
+    }
+}
+
+private fun formatDuration(minutes: Int): String {
+    return when {
+        minutes == 0 -> "0 minutes"
+        minutes < 60 -> "$minutes minute${if (minutes != 1) "s" else ""}"
+        minutes % 60 == 0 -> {
+            val hours = minutes / 60
+            "$hours hour${if (hours != 1) "s" else ""}"
+        }
+        else -> {
+            val hours = minutes / 60
+            val mins = minutes % 60
+            "${hours}h ${mins}m"
         }
     }
 }

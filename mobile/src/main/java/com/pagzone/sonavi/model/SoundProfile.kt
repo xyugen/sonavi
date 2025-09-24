@@ -17,6 +17,7 @@ data class SoundProfile(
     val displayName: String, // Editable for custom, same as name for built-in
     val isBuiltIn: Boolean,
     val isEnabled: Boolean = true,
+    val snoozedUntil: Date? = null, // When snooze expires, null = not snoozed
 
     // YAMNet Integration
     val yamnetIndices: List<Int> = emptyList(), // JSON array of indices for built-in sounds

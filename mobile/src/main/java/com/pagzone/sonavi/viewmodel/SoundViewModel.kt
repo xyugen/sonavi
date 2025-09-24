@@ -1,19 +1,28 @@
 package com.pagzone.sonavi.viewmodel
 
+import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pagzone.sonavi.data.repository.SoundRepository
 import com.pagzone.sonavi.model.SoundProfile
 import com.pagzone.sonavi.model.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
+import kotlinx.coroutines.flow.take
+import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
+import java.util.Date
 import javax.inject.Inject
+import kotlin.coroutines.cancellation.CancellationException
 
 @HiltViewModel
 class SoundViewModel @Inject constructor(
@@ -30,6 +39,30 @@ class SoundViewModel @Inject constructor(
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = emptyList()
         )
+
+    val snoozeStatuses: StateFlow<Map<Long, Boolean>> = _uiState
+        .map { it.snoozeStatuses }
+        .stateIn(viewModelScope, SharingStarted.WhileSubscribed(5000), emptyMap())
+
+    // Only track sounds that are actually snoozed
+    private val snoozeJobs = mutableMapOf<Long, Job>()
+
+    init {
+        // Wait for actual sounds to be loaded (skip empty initial value)
+        viewModelScope.launch {
+            sounds
+                .filter { it.isNotEmpty() } // Skip empty list
+                .take(1) // Take first non-empty emission
+                .collect { soundList ->
+                    soundList.forEach { sound ->
+                        Log.d("SoundViewModel", "${sound.name}: ${sound.snoozedUntil}")
+                        if (isSnoozed(sound)) {
+                            startSnoozeTimer(sound.id, sound.snoozedUntil!!)
+                        }
+                    }
+                }
+        }
+    }
 
     fun getAllSounds(): Flow<List<SoundProfile>> {
         return repository.getAllSounds()
@@ -75,6 +108,79 @@ class SoundViewModel @Inject constructor(
         } catch (e: Exception) {
             _uiState.value = _uiState.value.copy(error = e.message)
         }
+    }
+
+    private fun isSnoozed(sound: SoundProfile): Boolean {
+        return sound.snoozedUntil?.after(Date()) == true
+    }
+
+    // Start individual timer for a specific sound
+    private fun startSnoozeTimer(soundId: Long, snoozeUntil: Date) {
+        // Cancel existing job if any
+        snoozeJobs[soundId]?.cancel()
+
+        val delayMs = snoozeUntil.time - System.currentTimeMillis()
+        if (delayMs <= 0) {
+            // Already expired, remove from snooze immediately
+            removeFromSnooze(soundId)
+            return
+        }
+
+        snoozeJobs[soundId] = viewModelScope.launch {
+            try {
+                delay(delayMs)
+                // Snooze expired, remove from UI state
+                removeFromSnooze(soundId)
+            } catch (_: CancellationException) {
+                // Timer was cancelled (expected behavior)
+            }
+        }
+
+        // Update UI state immediately
+        _uiState.update { currentState ->
+            currentState.copy(
+                snoozeStatuses = currentState.snoozeStatuses + (soundId to true)
+            )
+        }
+    }
+
+    private fun removeFromSnooze(soundId: Long) {
+        snoozeJobs.remove(soundId)?.cancel()
+        _uiState.update { currentState ->
+            currentState.copy(
+                snoozeStatuses = currentState.snoozeStatuses - soundId
+            )
+        }
+
+        // Clear the database field
+        viewModelScope.launch {
+            repository.clearSnooze(soundId)
+        }
+    }
+
+    // Public function to snooze a sound
+    fun snoozeSound(soundId: Long, durationMinutes: Int) {
+        viewModelScope.launch {
+            val snoozeUntil = Date(System.currentTimeMillis() + durationMinutes * 60 * 1000)
+
+            // Update database
+            repository.updateSnoozeUntil(soundId, snoozeUntil)
+
+            // Start timer
+            startSnoozeTimer(soundId, snoozeUntil)
+        }
+    }
+
+    // Function to manually unsnooze
+    fun unsnoozeSound(soundId: Long) {
+        removeFromSnooze(soundId)
+    }
+
+    override fun onCleared() {
+        super.onCleared()
+        // Cancel all snooze timers
+        snoozeJobs.values.forEach { it.cancel() }
+        snoozeJobs.clear()
     }
 
     fun toggleSoundProfile(id: Long) {

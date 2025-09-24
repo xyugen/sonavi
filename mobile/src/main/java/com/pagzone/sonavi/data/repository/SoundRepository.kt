@@ -82,6 +82,22 @@ class SoundRepository @Inject constructor(
         }
     }
 
+    suspend fun updateSnoozeUntil(soundId: Long, snoozeUntil: Date) {
+        val soundProfile = soundProfileDao.getProfileById(soundId)
+        soundProfile?.let {
+            val updated = it.copy(snoozedUntil = snoozeUntil)
+            soundProfileDao.updateProfile(updated)
+        }
+    }
+
+    suspend fun clearSnooze(id: Long) {
+        val soundProfile = soundProfileDao.getProfileById(id)
+        soundProfile?.let {
+            val updated = it.copy(snoozedUntil = null)
+            soundProfileDao.updateProfile(updated)
+        }
+    }
+
     suspend fun deleteCustomSound(soundId: Long) {
         val profile = soundProfileDao.getProfileById(soundId)
         if (profile != null && !profile.isBuiltIn) {
