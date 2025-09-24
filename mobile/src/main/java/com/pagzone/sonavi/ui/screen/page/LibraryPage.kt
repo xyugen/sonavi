@@ -23,6 +23,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.navigationBarsPadding
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -34,7 +35,6 @@ import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Close
 import androidx.compose.material.icons.filled.Edit
-import androidx.compose.material.icons.filled.Info
 import androidx.compose.material.icons.filled.MoreVert
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -56,7 +56,6 @@ import androidx.compose.material3.Surface
 import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
-import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.derivedStateOf
@@ -85,6 +84,8 @@ import com.pagzone.sonavi.model.SoundProfile
 import com.pagzone.sonavi.ui.component.CustomMenuItem
 import com.pagzone.sonavi.ui.component.CustomSearchBar
 import com.pagzone.sonavi.ui.component.SoundFilterChips
+import com.pagzone.sonavi.ui.component.StepSequencer
+import com.pagzone.sonavi.ui.component.stepsToVibrationPattern
 import com.pagzone.sonavi.util.Constants.Classifier.CONFIDENCE_THRESHOLD
 import com.pagzone.sonavi.util.Constants.SoundProfile.DEFAULT_VIBRATION_PATTERN
 import com.pagzone.sonavi.viewmodel.SoundViewModel
@@ -235,7 +236,9 @@ private fun StatsAndToggleSection(
     onToggleAllClick: () -> Unit
 ) {
     Card(
-        modifier = Modifier.fillMaxWidth().padding(bottom = 4.dp),
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(bottom = 4.dp),
         colors = CardDefaults.cardColors(
             containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
         ),
@@ -316,6 +319,7 @@ fun EditModalSheet(
     var name by remember { mutableStateOf(soundProfile.displayName) }
     var isCriticalSoundEnabled by remember { mutableStateOf(soundProfile.isCritical) }
     var soundThreshold by remember { mutableFloatStateOf(soundProfile.threshold) }
+    var vibrationPattern by remember { mutableStateOf(soundProfile.vibrationPattern) }
 
     val isDefaultVibrationPattern = soundProfile.vibrationPattern == DEFAULT_VIBRATION_PATTERN
     var selectedVibrationPattern by remember {
@@ -324,10 +328,10 @@ fun EditModalSheet(
         )
     }
 
-    val isFormValid = name.isNotBlank()
+    val isFormValid = name.isNotBlank() && vibrationPattern.size >= 3
     val hasChanges =
         name != soundProfile.displayName || isCriticalSoundEnabled != soundProfile.isCritical ||
-                soundThreshold != soundProfile.threshold // TODO: verify vibration pattern ?
+                soundThreshold != soundProfile.threshold || vibrationPattern != soundProfile.vibrationPattern
 
     // Animation states for micro-interactions
     val switchScale by animateFloatAsState(
@@ -786,7 +790,7 @@ fun EditModalSheet(
                                 Button(
                                     onClick = {
                                         selectedVibrationPattern = "Default"
-                                        /* Handle default vibration */
+                                        vibrationPattern = DEFAULT_VIBRATION_PATTERN
                                     },
                                     modifier = Modifier.weight(1f),
                                     shape = RoundedCornerShape(12.dp),
@@ -892,33 +896,13 @@ fun EditModalSheet(
                                 Column {
                                     Spacer(modifier = Modifier.height(12.dp))
 
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = MaterialTheme.colorScheme.primaryContainer.copy(
-                                            alpha = 0.3f
-                                        ),
-                                        modifier = Modifier.fillMaxWidth()
-                                    ) {
-                                        Row(
-                                            modifier = Modifier.padding(12.dp),
-                                            verticalAlignment = Alignment.CenterVertically
-                                        ) {
-                                            Icon(
-                                                imageVector = Icons.Default.Info,
-                                                contentDescription = null,
-                                                tint = MaterialTheme.colorScheme.primary,
-                                                modifier = Modifier.size(16.dp)
-                                            )
-
-                                            Spacer(modifier = Modifier.width(8.dp))
-
-                                            Text(
-                                                text = "Tap 'Custom' again to create or edit pattern",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
+                                    StepSequencer(
+                                        initialPattern = if (isDefaultVibrationPattern) null else soundProfile.vibrationPattern,
+                                        onPatternChanged = {
+                                            vibrationPattern =
+                                                stepsToVibrationPattern(it, 200).toList()
                                         }
-                                    }
+                                    )
                                 }
                             }
                         }
@@ -955,7 +939,9 @@ fun EditModalSheet(
                                         displayName = name.trim(),
                                         isCritical = isCriticalSoundEnabled,
                                         threshold = soundThreshold,
-//                                  TODO: vibrationPattern =
+                                        vibrationPattern =
+                                            if (selectedVibrationPattern == "Custom") vibrationPattern
+                                            else DEFAULT_VIBRATION_PATTERN
                                     )
                                 )
                                 onDismissRequest()
@@ -1027,30 +1013,55 @@ fun SoundCard(
                 .padding(12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
-            // Sound Icon - compact size
+            // Sound Icon - compact size with vibration badge
             Box(
-                modifier = Modifier
-                    .size(48.dp)
-                    .clip(RoundedCornerShape(12.dp))
-                    .background(iconButtonColor)
-                    .scale(iconScale),
+                modifier = Modifier.size(48.dp),
                 contentAlignment = Alignment.Center
             ) {
-                Icon(
-                    imageVector = icon,
-                    contentDescription = sound.displayName,
-                    tint = Color.White,
-                    modifier = Modifier.size(24.dp)
-                )
+                // Main icon background
+                Box(
+                    modifier = Modifier
+                        .size(48.dp)
+                        .clip(RoundedCornerShape(12.dp))
+                        .background(iconButtonColor)
+                        .scale(iconScale),
+                    contentAlignment = Alignment.Center
+                ) {
+                    Icon(
+                        imageVector = icon,
+                        contentDescription = sound.displayName,
+                        tint = Color.White,
+                        modifier = Modifier.size(24.dp)
+                    )
+                }
+
+                // Custom vibration indicator badge (positioned outside clipping area)
+                if (sound.vibrationPattern != DEFAULT_VIBRATION_PATTERN) {
+                    Box(
+                        modifier = Modifier
+                            .align(Alignment.TopEnd)
+                            .offset(x = 4.dp, y = (-4).dp)
+                            .size(18.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.tertiary),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        Icon(
+                            imageVector = ImageVector.vectorResource(R.drawable.ic_watch_vibration),
+                            contentDescription = "Custom vibration",
+                            tint = MaterialTheme.colorScheme.onTertiary,
+                            modifier = Modifier.size(12.dp)
+                        )
+                    }
+                }
             }
 
             Spacer(modifier = Modifier.width(12.dp))
 
-            // Content section - compact
+            // Content section
             Column(
                 modifier = Modifier.weight(1f)
             ) {
-                // Title row with sound name and type badge
                 Row(
                     verticalAlignment = Alignment.CenterVertically,
                     modifier = Modifier.fillMaxWidth()
@@ -1069,7 +1080,6 @@ fun SoundCard(
 
                     Spacer(modifier = Modifier.width(6.dp))
 
-                    // TODO: Built-in type badge - smaller
                     Surface(
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                         shape = RoundedCornerShape(6.dp)
