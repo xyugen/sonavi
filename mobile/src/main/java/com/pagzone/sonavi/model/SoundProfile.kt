@@ -30,6 +30,10 @@ data class SoundProfile(
     val isCritical: Boolean = false,
     val vibrationPattern: List<Long> = DEFAULT_VIBRATION_PATTERN,
 
+    // Emergency
+    val emergencyCooldownMinutes: Int = 5,
+    val lastEmergencyMessageSent: Date? = null,
+
     // Metadata
     val createdAt: Date = Date(),
     val updatedAt: Date = Date(),

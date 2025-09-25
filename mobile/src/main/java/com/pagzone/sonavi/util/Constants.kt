@@ -31,4 +31,7 @@ class Constants {
         const val SOUND_PREFERENCES = "sound_preferences"
         const val VIBRATION_PATTERNS = "vibration_patterns"
     }
+    object Sms {
+        const val SMS_PERMISSION_REQUEST_CODE = 1001
+    }
 }

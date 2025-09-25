@@ -11,14 +11,12 @@ import androidx.navigation.compose.rememberNavController
 import com.pagzone.sonavi.ui.component.ScreenWithScaffold
 import com.pagzone.sonavi.ui.navigation.AppNavHost
 import com.pagzone.sonavi.viewmodel.ClientDataViewModel
-import com.pagzone.sonavi.viewmodel.SoundPreferencesViewModel
 
 @Preview(showSystemUi = true)
 @Composable
 fun MainScreen(
     navController: NavHostController = rememberNavController(),
     clientDataViewModel: ClientDataViewModel = viewModel(),
-    soundPreferencesViewModel: SoundPreferencesViewModel = viewModel(),
     onStartListening: () -> Unit = {},
     onStopListening: () -> Unit = {}
 ) {

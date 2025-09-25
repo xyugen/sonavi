@@ -14,6 +14,10 @@ class EmergencyContactRepository @Inject constructor(
         return dao.getAll()
     }
 
+    suspend fun getActiveEmergencyContacts(): List<EmergencyContact> {
+        return dao.getActiveContacts()
+    }
+
     suspend fun addContact(contact: EmergencyContact) {
         dao.insert(contact)
     }

@@ -7,6 +7,7 @@ import android.util.Log
 import android.widget.Toast
 import com.google.android.gms.wearable.ChannelIOException
 import com.pagzone.sonavi.data.repository.ClassificationResultRepositoryImpl
+import com.pagzone.sonavi.domain.EmergencyHandler
 import com.pagzone.sonavi.domain.HybridYamnetClassifier
 import com.pagzone.sonavi.model.ClassificationResult
 import com.pagzone.sonavi.model.VibrationEffectDTO
@@ -24,7 +25,6 @@ import java.util.Date
 object AudioClassifierService {
     private lateinit var appContext: Context
     private lateinit var hybridYamnetClassifier: HybridYamnetClassifier
-
     private val clientDataViewModel = ClientDataViewModel()
 
     fun init(context: Context) {
@@ -86,7 +86,16 @@ object AudioClassifierService {
                                     )
                                 )
 
-                                Log.d("FewShot", "Label: ${sound.displayName}, Conf: $confidence")
+                                if (sound.isCritical) {
+                                    Log.d("AudioClassifierService", "Handling emergency event")
+                                    EmergencyHandler.handleEmergencyEvent(sound, confidence)
+                                    Log.d("AudioClassifierService", "Emergency event handled")
+                                }
+
+                                Log.d(
+                                    "FewShot",
+                                    "Label: ${sound.displayName}, Conf: $confidence"
+                                )
                             }
                         }
 
