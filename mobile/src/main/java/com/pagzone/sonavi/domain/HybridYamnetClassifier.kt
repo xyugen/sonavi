@@ -17,6 +17,7 @@ import kotlinx.coroutines.launch
 import org.tensorflow.lite.Interpreter
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.util.Date
 
 class HybridYamnetClassifier(
     context: Context
@@ -35,8 +36,6 @@ class HybridYamnetClassifier(
 
     private val interpreter: Interpreter
     private val labels: List<String>
-    private val DEFAULT_THRESHOLD = 0.5f
-    private val FEWSHOT_THRESHOLD = 0.75f
 
     // Change to store SoundProfile references instead of just display names
     private val emaScores = mutableMapOf<SoundProfile, Float>()
@@ -100,7 +99,9 @@ class HybridYamnetClassifier(
             "HybridYamnetClassifier",
             "Getting allowed prefs: $sounds"
         )
-        val allowedSounds = sounds.filter { it.isEnabled } // TODO: Add snoozed check
+        val allowedSounds = sounds.filter {
+            it.isEnabled && (it.snoozedUntil == null || it.snoozedUntil.before(Date()))
+        }
 
         // 3. Merge predictions for allowed sounds only
         val scores = outputScores[0]
@@ -127,24 +128,11 @@ class HybridYamnetClassifier(
         return topSoundProfile to topScore
     }
 
-    // Helper method if you still need just the display name
-    suspend fun classifyForDisplayName(audioInput: FloatArray): Pair<String, Float> {
-        val (soundProfile, score) = classify(audioInput)
-        return (soundProfile?.displayName ?: "") to score
-    }
-
     // You can add threshold checking methods that work with SoundProfile
     fun meetsThreshold(soundProfile: SoundProfile?, score: Float): Boolean {
         return soundProfile?.let { profile ->
             score >= profile.threshold
         } ?: false
-    }
-
-    // Check if a sound profile is snoozed (you'll need to implement this based on your snooze logic)
-    private fun isSnoozed(soundProfile: SoundProfile): Boolean {
-        // TODO: Implement based on your snooze mechanism
-        // This might require checking a separate table or field in SoundProfile
-        return false
     }
 
     // Clean up resources

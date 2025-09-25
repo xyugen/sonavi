@@ -101,6 +101,7 @@ import com.pagzone.sonavi.ui.component.stepsToVibrationPattern
 import com.pagzone.sonavi.util.Constants.Classifier.CONFIDENCE_THRESHOLD
 import com.pagzone.sonavi.util.Constants.SoundProfile.DEFAULT_VIBRATION_PATTERN
 import com.pagzone.sonavi.viewmodel.SoundViewModel
+import java.util.Date
 
 @Composable
 fun LibraryPage(
@@ -292,6 +293,7 @@ private fun SoundList(
                     when (action) {
                         "edit" -> onEditSound(sound)
                         "snooze" -> onSnoozeSound(sound)
+                        "unsnooze" -> onUnsnoozeSound(sound)
                     }
                 }
             )
@@ -1732,10 +1734,11 @@ fun SoundCard(
                     )
 
                     CustomMenuItem(
-                        text = "Snooze",
+                        text = if (isSnoozed) "Unsnooze" else "Snooze",
                         icon = R.drawable.ic_snooze,
                         onClick = {
-                            onMenuClick("snooze")
+                            if (isSnoozed) onMenuClick("unsnooze")
+                            else onMenuClick("snooze")
                             showMenu = false
                         }
                     )

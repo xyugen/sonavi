@@ -30,12 +30,12 @@ object DatabaseInitializer {
 
             // Animals
             SoundProfile(
-                name = "Snake", displayName = "Snake", isBuiltIn = true,
-                yamnetIndices = listOf(129)
+                name = "Dog", displayName = "Dog", isBuiltIn = true,
+                yamnetIndices = listOf(69, 71)
             ),
             SoundProfile(
-                name = "Rattle", displayName = "Rattle", isBuiltIn = true,
-                yamnetIndices = listOf(130)
+                name = "Cat", displayName = "Cat", isBuiltIn = true,
+                yamnetIndices = listOf(76, 77, 78, 79)
             ),
 
             // Vehicles & traffic

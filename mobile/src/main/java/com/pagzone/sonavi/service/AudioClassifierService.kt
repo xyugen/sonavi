@@ -20,7 +20,6 @@ import java.io.IOException
 import java.io.InputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
-import java.util.Date
 
 object AudioClassifierService {
     private lateinit var appContext: Context
@@ -71,32 +70,28 @@ object AudioClassifierService {
                     if (offset >= floatBuffer.size) {
                         val (sound, confidence) = hybridYamnetClassifier.classify(floatBuffer)
 
-                        if (sound != null) {
-                            val isSnoozed = sound.snoozedUntil?.after(Date()) == true
+                        if (sound != null && confidence >= sound.threshold) {
+                            ClassificationResultRepositoryImpl.addResult(
+                                ClassificationResult(sound.displayName, confidence)
+                            )
 
-                            if (confidence >= sound.threshold && !isSnoozed) {
-                                ClassificationResultRepositoryImpl.addResult(
-                                    ClassificationResult(sound.displayName, confidence)
+                            clientDataViewModel.sendPrediction(
+                                sound.displayName, confidence, VibrationEffectDTO(
+                                    timings = sound.vibrationPattern,
+                                    repeat = -1
                                 )
+                            )
 
-                                clientDataViewModel.sendPrediction(
-                                    sound.displayName, confidence, VibrationEffectDTO(
-                                        timings = sound.vibrationPattern,
-                                        repeat = -1
-                                    )
-                                )
-
-                                if (sound.isCritical) {
-                                    Log.d("AudioClassifierService", "Handling emergency event")
-                                    EmergencyHandler.handleEmergencyEvent(sound, confidence)
-                                    Log.d("AudioClassifierService", "Emergency event handled")
-                                }
-
-                                Log.d(
-                                    "FewShot",
-                                    "Label: ${sound.displayName}, Conf: $confidence"
-                                )
+                            if (sound.isCritical) {
+                                Log.d("AudioClassifierService", "Handling emergency event")
+                                EmergencyHandler.handleEmergencyEvent(sound, confidence)
+                                Log.d("AudioClassifierService", "Emergency event handled")
                             }
+
+                            Log.d(
+                                "FewShot",
+                                "Label: ${sound.displayName}, Conf: $confidence"
+                            )
                         }
 
                         offset = 0
