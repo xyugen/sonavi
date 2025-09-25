@@ -504,7 +504,7 @@ fun SnoozeBottomSheet(
                     verticalAlignment = Alignment.CenterVertically
                 ) {
                     Icon(
-                        imageVector = ImageVector.vectorResource(R.drawable.ic_snooze), // TODO: schedule icon
+                        imageVector = ImageVector.vectorResource(R.drawable.ic_schedule),
                         contentDescription = null,
                         tint = MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(20.dp)
@@ -575,13 +575,9 @@ private fun SnoozeOptionCard(
                 horizontalAlignment = Alignment.CenterHorizontally,
                 verticalArrangement = Arrangement.Center
             ) {
-                // Duration icon based on time length
+                // Duration icon
                 Icon(
-                    imageVector = when {
-                        minutes <= 15 -> ImageVector.vectorResource(R.drawable.ic_snooze) // TODO: timer icon
-                        minutes <= 60 -> ImageVector.vectorResource(R.drawable.ic_snooze) // TODO: schedule icon
-                        else -> ImageVector.vectorResource(R.drawable.ic_snooze)// TODO: watchlater icon
-                    },
+                    imageVector = ImageVector.vectorResource(R.drawable.ic_timer),
                     contentDescription = null,
                     tint = MaterialTheme.colorScheme.primary,
                     modifier = Modifier.size(24.dp)
@@ -619,7 +615,7 @@ private fun CustomSnoozeDialog(
         onDismissRequest = onDismiss,
         icon = {
             Icon(
-                imageVector = ImageVector.vectorResource(R.drawable.ic_snooze), // TODO: schedule icon
+                imageVector = ImageVector.vectorResource(R.drawable.ic_schedule),
                 contentDescription = null,
                 tint = MaterialTheme.colorScheme.primary,
                 modifier = Modifier.size(24.dp)
@@ -758,7 +754,7 @@ private fun TimePickerRow(
                     modifier = Modifier.size(36.dp)
                 ) {
                     Icon(
-                        imageVector = ImageVector.vectorResource(R.drawable.ic_close), // TODO: remove icon
+                        imageVector = ImageVector.vectorResource(R.drawable.ic_remove),
                         contentDescription = "Decrease",
                         modifier = Modifier.size(20.dp)
                     )
@@ -988,7 +984,7 @@ fun EditModalSheet(
                             Row(
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon( // TODO: change icon
+                                Icon(
                                     imageVector = if (isCriticalSoundEnabled)
                                         ImageVector.vectorResource(R.drawable.ic_emergency_home_filled) else
                                         ImageVector.vectorResource(R.drawable.ic_emergency_home),
