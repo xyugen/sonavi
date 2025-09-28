@@ -65,10 +65,26 @@ class HybridYamnetClassifier(
 
     private fun mergePredictions(yamnetScores: FloatArray): Map<SoundProfile, Float> {
         val merged = mutableMapOf<SoundProfile, Float>()
+
         for (sound in sounds) {
-            val sum = sound.yamnetIndices.sumOf { yamnetScores[it].toDouble() }
-            merged[sound] = sum.toFloat()
+            if (sound.yamnetIndices.isEmpty()) {
+                merged[sound] = 0f
+                continue
+            }
+
+            // Get individual scores for this sound's indices
+            val indexScores = sound.yamnetIndices.map { yamnetScores[it] }
+
+            // Use top 2-3 scores with simple weighting
+            val sortedScores = indexScores.sortedDescending()
+            val topScore = sortedScores[0]
+            val secondScore = sortedScores.getOrNull(1) ?: 0f
+            val thirdScore = sortedScores.getOrNull(2) ?: 0f
+
+            // Simple weighted combination: 85% top + 7.5% second + 2.5% third
+            merged[sound] = topScore * 0.9f + secondScore * 0.075f + thirdScore * 0.025f
         }
+
         return merged
     }
 
