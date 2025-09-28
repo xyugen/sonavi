@@ -20,7 +20,6 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
-import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.Card
@@ -78,7 +77,8 @@ fun HomePage(
                 totalSounds = todayResults.size,
                 highConfidenceCount = todayResults.count { it.confidence >= 0.9 },
                 mostFrequentSound = todayResults.groupBy { it.label }
-                    .maxByOrNull { it.value.size }?.key ?: "None"
+                    .maxByOrNull { it.value.size }?.key ?: "None",
+                criticalSounds = todayResults.count { it.isCritical }
             )
         }
     }
@@ -300,7 +300,7 @@ private fun StatsOverviewCard(stats: SoundStats) {
                 Spacer(modifier = Modifier.width(8.dp))
 
                 Text(
-                    text = "Today's Activity",
+                    text = "Activity",
                     style = MaterialTheme.typography.titleMedium,
                     fontWeight = FontWeight.SemiBold
                 )
@@ -320,10 +320,11 @@ private fun StatsOverviewCard(stats: SoundStats) {
                 )
 
                 StatItem(
-                    title = "High Confidence",
-                    value = "${stats.highConfidenceCount}",
-                    icon = R.drawable.ic_verified,
-                    modifier = Modifier.weight(1f)
+                    title = "Critical Alerts",
+                    value = "${stats.criticalSounds}",
+                    icon = R.drawable.ic_emergency_home_filled,
+                    modifier = Modifier.weight(1f),
+                    tint = MaterialTheme.colorScheme.error
                 )
             }
 
@@ -363,7 +364,8 @@ private fun StatItem(
     title: String,
     value: String,
     icon: Int,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    tint: Color = MaterialTheme.colorScheme.primary
 ) {
     Column(
         modifier = modifier,
@@ -377,7 +379,7 @@ private fun StatItem(
             Icon(
                 imageVector = ImageVector.vectorResource(icon),
                 contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
+                tint = tint,
                 modifier = Modifier.padding(10.dp)
             )
         }

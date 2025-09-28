@@ -72,7 +72,11 @@ object AudioClassifierService {
 
                         if (sound != null && confidence >= sound.threshold) {
                             ClassificationResultRepositoryImpl.addResult(
-                                ClassificationResult(sound.displayName, confidence)
+                                ClassificationResult(
+                                    sound.displayName,
+                                    confidence,
+                                    sound.isCritical
+                                )
                             )
 
                             clientDataViewModel.sendPrediction(
