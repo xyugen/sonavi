@@ -10,7 +10,7 @@ class Constants {
         const val SOUND_DETECTED_PATH = "/sound_detected"
     }
     object Classifier {
-        const val CONFIDENCE_THRESHOLD = 0.6f
+        const val CONFIDENCE_THRESHOLD = 0.5f // 50% confidence
         const val SMOOTHING_ALPHA = 0.75f
     }
     object SoundProfile {

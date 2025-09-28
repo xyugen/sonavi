@@ -9,47 +9,23 @@ object DatabaseInitializer {
             // Human vocalizations
             SoundProfile(
                 name = "Speech", displayName = "Speech", isBuiltIn = true,
-                yamnetIndices = listOf(0)
-            ),
-            SoundProfile(
-                name = "Shout", displayName = "Shout", isBuiltIn = true,
-                yamnetIndices = listOf(6, 9, 10, 11)
+                yamnetIndices = listOf(0, 6, 9, 10, 11) // Speech, Shout, Groan, Growling
             ),
             SoundProfile(
                 name = "Baby cry", displayName = "Baby cry", isBuiltIn = true,
                 yamnetIndices = listOf(19)
             ),
-            SoundProfile(
-                name = "Groan", displayName = "Groan", isBuiltIn = true,
-                yamnetIndices = listOf(33)
-            ),
-            SoundProfile(
-                name = "Growling", displayName = "Growling", isBuiltIn = true,
-                yamnetIndices = listOf(74)
-            ),
 
             // Animals
             SoundProfile(
                 name = "Dog", displayName = "Dog", isBuiltIn = true,
-                yamnetIndices = listOf(69, 71)
-            ),
-            SoundProfile(
-                name = "Cat", displayName = "Cat", isBuiltIn = true,
-                yamnetIndices = listOf(76, 77, 78, 79)
+                yamnetIndices = listOf(69, 71, 74) // Dog, Dog bark, Dog growl
             ),
 
             // Vehicles & traffic
             SoundProfile(
                 name = "Bicycle bell", displayName = "Bicycle bell", isBuiltIn = true,
                 yamnetIndices = listOf(198)
-            ),
-            SoundProfile(
-                name = "Thunder", displayName = "Thunder", isBuiltIn = true,
-                yamnetIndices = listOf(281)
-            ),
-            SoundProfile(
-                name = "Fire", displayName = "Fire", isBuiltIn = true,
-                yamnetIndices = listOf(292, 293)
             ),
             SoundProfile(
                 name = "Vehicle", displayName = "Vehicle", isBuiltIn = true,
@@ -61,7 +37,7 @@ object DatabaseInitializer {
             ),
             SoundProfile(
                 name = "Car", displayName = "Car", isBuiltIn = true,
-                yamnetIndices = listOf(301)
+                yamnetIndices = listOf(301, 306, 307) // Car, Skidding, Idk
             ),
             SoundProfile(
                 name = "Vehicle horn", displayName = "Vehicle horn", isBuiltIn = true,
@@ -70,14 +46,6 @@ object DatabaseInitializer {
             SoundProfile(
                 name = "Car alarm", displayName = "Car alarm", isBuiltIn = true,
                 yamnetIndices = listOf(304)
-            ),
-            SoundProfile(
-                name = "Skidding", displayName = "Skidding", isBuiltIn = true,
-                yamnetIndices = listOf(306, 307)
-            ),
-            SoundProfile(
-                name = "Reversing beep", displayName = "Reversing beep", isBuiltIn = true,
-                yamnetIndices = listOf(313)
             ),
             SoundProfile(
                 name = "Emergency vehicle", displayName = "Emergency vehicle", isBuiltIn = true,
@@ -125,19 +93,11 @@ object DatabaseInitializer {
             // Explosives / Impact
             SoundProfile(
                 name = "Explosion", displayName = "Explosion", isBuiltIn = true,
-                yamnetIndices = listOf(420)
+                yamnetIndices = listOf(281, 420, 429, 430) // Thunder, Explosion, Eruption, Boom
             ),
             SoundProfile(
                 name = "Gunshot", displayName = "Gunshot", isBuiltIn = true,
                 yamnetIndices = listOf(421, 422, 423, 424, 425)
-            ),
-            SoundProfile(
-                name = "Eruption", displayName = "Eruption", isBuiltIn = true,
-                yamnetIndices = listOf(429)
-            ),
-            SoundProfile(
-                name = "Boom", displayName = "Boom", isBuiltIn = true,
-                yamnetIndices = listOf(430)
             ),
             SoundProfile(
                 name = "Crack", displayName = "Crack", isBuiltIn = true,
@@ -157,7 +117,7 @@ object DatabaseInitializer {
             ),
             SoundProfile(
                 name = "Beep", displayName = "Beep", isBuiltIn = true,
-                yamnetIndices = listOf(475)
+                yamnetIndices = listOf(313, 475) // Reversing beep, Beep
             )
         )
 
