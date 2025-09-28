@@ -23,6 +23,7 @@ import androidx.navigation.compose.rememberNavController
 import com.pagzone.sonavi.data.repository.ClientDataRepositoryImpl
 import com.pagzone.sonavi.data.repository.EmergencyContactRepository
 import com.pagzone.sonavi.data.repository.SoundPreferencesRepositoryImpl
+import com.pagzone.sonavi.data.repository.SoundRepository
 import com.pagzone.sonavi.domain.EmergencyHandler
 import com.pagzone.sonavi.service.AudioClassifierService
 import com.pagzone.sonavi.service.SmsService
@@ -43,6 +44,8 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var emergencyRepository: EmergencyContactRepository
+    @Inject
+    lateinit var soundRepository: SoundRepository
 
     private val clientDataViewModel: ClientDataViewModel by viewModels()
 
@@ -56,7 +59,7 @@ class MainActivity : ComponentActivity() {
         ClientDataRepositoryImpl.init(this)
         AudioClassifierService.init(this)
         SmsService.init(this)
-        EmergencyHandler.init(this, emergencyRepository)
+        EmergencyHandler.init(this, emergencyRepository, soundRepository)
 
         setContent {
             SonaviTheme {

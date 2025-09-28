@@ -82,6 +82,14 @@ class SoundRepository @Inject constructor(
         }
     }
 
+    suspend fun updateLastEmergencyMessageSent(soundId: Long, date: Date) {
+        val soundProfile = soundProfileDao.getProfileById(soundId)
+        soundProfile?.let {
+            val updated = it.copy(lastEmergencyMessageSent = date)
+            soundProfileDao.updateProfile(updated)
+        }
+    }
+
     suspend fun updateSnoozeUntil(soundId: Long, snoozeUntil: Date) {
         val soundProfile = soundProfileDao.getProfileById(soundId)
         soundProfile?.let {

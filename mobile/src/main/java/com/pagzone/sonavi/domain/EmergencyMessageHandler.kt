@@ -6,6 +6,7 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.pagzone.sonavi.R
 import com.pagzone.sonavi.data.repository.EmergencyContactRepository
+import com.pagzone.sonavi.data.repository.SoundRepository
 import com.pagzone.sonavi.model.SoundProfile
 import com.pagzone.sonavi.service.SmsService
 import java.text.SimpleDateFormat
@@ -15,10 +16,16 @@ import java.util.Locale
 object EmergencyHandler {
     private lateinit var appContext: Context
     private lateinit var emergencyContactRepository: EmergencyContactRepository
+    private lateinit var soundRepository: SoundRepository
 
-    fun init(context: Context, repository: EmergencyContactRepository) {
+    fun init(
+        context: Context,
+        emergencyRepository: EmergencyContactRepository,
+        soundRepository: SoundRepository
+    ) {
         this.appContext = context.applicationContext
-        this.emergencyContactRepository = repository
+        this.emergencyContactRepository = emergencyRepository
+        this.soundRepository = soundRepository
     }
 
     suspend fun handleEmergencyEvent(sound: SoundProfile, confidence: Float) {
@@ -46,9 +53,7 @@ object EmergencyHandler {
                 SmsService.sendEmergencySms(contact.number, message)
             }
 
-            // TODO: Update last sent time
-            // emergencyContactRepository.updateLastEmergencyMessageSent(sound.id, Date())
-
+            soundRepository.updateLastEmergencyMessageSent(sound.id, Date())
         } catch (e: Exception) {
             Log.e("EmergencyHandler", "Failed to send emergency SMS", e)
         }

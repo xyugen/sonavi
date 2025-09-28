@@ -101,7 +101,6 @@ import com.pagzone.sonavi.ui.component.stepsToVibrationPattern
 import com.pagzone.sonavi.util.Constants.Classifier.CONFIDENCE_THRESHOLD
 import com.pagzone.sonavi.util.Constants.SoundProfile.DEFAULT_VIBRATION_PATTERN
 import com.pagzone.sonavi.viewmodel.SoundViewModel
-import java.util.Date
 
 @Composable
 fun LibraryPage(
@@ -474,7 +473,6 @@ fun SnoozeBottomSheet(
                 items(quickDurations) { (minutes, label) ->
                     SnoozeOptionCard(
                         label = label,
-                        minutes = minutes,
                         onClick = {
                             onSnooze(minutes)
                             onDismissRequest()
@@ -538,7 +536,6 @@ fun SnoozeBottomSheet(
 @Composable
 private fun SnoozeOptionCard(
     label: String,
-    minutes: Int,
     onClick: () -> Unit
 ) {
     val interactionSource = remember { MutableInteractionSource() }
@@ -799,6 +796,7 @@ fun EditModalSheet(
     var isCriticalSoundEnabled by remember { mutableStateOf(soundProfile.isCritical) }
     var soundThreshold by remember { mutableFloatStateOf(soundProfile.threshold) }
     var vibrationPattern by remember { mutableStateOf(soundProfile.vibrationPattern) }
+    var selectedCooldown by remember { mutableIntStateOf(soundProfile.emergencyCooldownMinutes) }
 
     val isDefaultVibrationPattern = soundProfile.vibrationPattern == DEFAULT_VIBRATION_PATTERN
     var selectedVibrationPattern by remember {
@@ -810,7 +808,8 @@ fun EditModalSheet(
     val isFormValid = name.isNotBlank() && vibrationPattern.size >= 3
     val hasChanges =
         name != soundProfile.displayName || isCriticalSoundEnabled != soundProfile.isCritical ||
-                soundThreshold != soundProfile.threshold || vibrationPattern != soundProfile.vibrationPattern
+                soundThreshold != soundProfile.threshold || vibrationPattern != soundProfile.vibrationPattern ||
+                (soundProfile.isCritical && selectedCooldown != soundProfile.emergencyCooldownMinutes)
 
     // Animation states for micro-interactions
     val switchScale by animateFloatAsState(
@@ -974,56 +973,78 @@ fun EditModalSheet(
                         shape = RoundedCornerShape(16.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
-                        Row(
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .padding(20.dp),
-                            horizontalArrangement = Arrangement.SpaceBetween,
-                            verticalAlignment = Alignment.CenterVertically
-                        ) {
+                        Column {
                             Row(
+                                modifier = Modifier
+                                    .fillMaxWidth()
+                                    .padding(20.dp),
+                                horizontalArrangement = Arrangement.SpaceBetween,
                                 verticalAlignment = Alignment.CenterVertically
                             ) {
-                                Icon(
-                                    imageVector = if (isCriticalSoundEnabled)
-                                        ImageVector.vectorResource(R.drawable.ic_emergency_home_filled) else
-                                        ImageVector.vectorResource(R.drawable.ic_emergency_home),
-                                    contentDescription = null,
-                                    tint = if (isCriticalSoundEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                    modifier = Modifier.size(20.dp)
-                                )
-
-                                Spacer(modifier = Modifier.width(12.dp))
-
-                                Column {
-                                    Text(
-                                        text = "Critical Sound",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold,
-                                        color = MaterialTheme.colorScheme.onSurface
+                                Row(
+                                    verticalAlignment = Alignment.CenterVertically
+                                ) {
+                                    Icon(
+                                        imageVector = if (isCriticalSoundEnabled)
+                                            ImageVector.vectorResource(R.drawable.ic_emergency_home_filled) else
+                                            ImageVector.vectorResource(R.drawable.ic_emergency_home),
+                                        contentDescription = null,
+                                        tint = if (isCriticalSoundEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                        modifier = Modifier.size(20.dp)
                                     )
 
-                                    Text(
-                                        text = if (isCriticalSoundEnabled) "Enabled" else "Disabled",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                                    Spacer(modifier = Modifier.width(12.dp))
+
+                                    Column {
+                                        Text(
+                                            text = "Critical Sound",
+                                            style = MaterialTheme.typography.titleMedium,
+                                            fontWeight = FontWeight.SemiBold,
+                                            color = MaterialTheme.colorScheme.onSurface
+                                        )
+
+                                        Text(
+                                            text = if (isCriticalSoundEnabled) "Enabled" else "Disabled",
+                                            style = MaterialTheme.typography.bodySmall,
+                                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                                        )
+                                    }
+                                }
+
+                                Switch(
+                                    checked = isCriticalSoundEnabled,
+                                    onCheckedChange = { isCriticalSoundEnabled = it },
+                                    modifier = Modifier.scale(switchScale),
+                                    colors = SwitchDefaults.colors(
+                                        checkedThumbColor = Color.White,
+                                        checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                        uncheckedThumbColor = Color.White,
+                                        uncheckedTrackColor = MaterialTheme.colorScheme.outline.copy(
+                                            alpha = 0.5f
+                                        )
+                                    )
+                                )
+                            }
+
+                            // Cooldown selection - shows when critical is enabled
+                            AnimatedVisibility(
+                                visible = isCriticalSoundEnabled,
+                                enter = expandVertically() + fadeIn(),
+                                exit = shrinkVertically() + fadeOut()
+                            ) {
+                                Column {
+                                    HorizontalDivider(
+                                        modifier = Modifier.padding(horizontal = 20.dp),
+                                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
+                                    )
+
+                                    EmergencyCooldownSelector(
+                                        selectedCooldown = selectedCooldown,
+                                        onCooldownChanged = { selectedCooldown = it },
+                                        modifier = Modifier.padding(20.dp)
                                     )
                                 }
                             }
-
-                            Switch(
-                                checked = isCriticalSoundEnabled,
-                                onCheckedChange = { isCriticalSoundEnabled = it },
-                                modifier = Modifier.scale(switchScale),
-                                colors = SwitchDefaults.colors(
-                                    checkedThumbColor = Color.White,
-                                    checkedTrackColor = MaterialTheme.colorScheme.primary,
-                                    uncheckedThumbColor = Color.White,
-                                    uncheckedTrackColor = MaterialTheme.colorScheme.outline.copy(
-                                        alpha = 0.5f
-                                    )
-                                )
-                            )
                         }
                     }
                 }
@@ -1420,7 +1441,10 @@ fun EditModalSheet(
                                         threshold = soundThreshold,
                                         vibrationPattern =
                                             if (selectedVibrationPattern == "Custom") vibrationPattern
-                                            else DEFAULT_VIBRATION_PATTERN
+                                            else DEFAULT_VIBRATION_PATTERN,
+                                        emergencyCooldownMinutes =
+                                            if (isCriticalSoundEnabled) selectedCooldown
+                                            else 5
                                     )
                                 )
                                 onDismissRequest()
@@ -1761,6 +1785,92 @@ fun SoundCard(
     }
 }
 
+@Composable
+private fun EmergencyCooldownSelector(
+    selectedCooldown: Int,
+    onCooldownChanged: (Int) -> Unit,
+    modifier: Modifier = Modifier
+) {
+    val cooldownOptions = listOf(1, 2, 5, 10, 15, 30, 60)
+    val currentIndex = cooldownOptions.indexOf(selectedCooldown).takeIf { it >= 0 } ?: 2
+
+    Row(
+        modifier = modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            Icon(
+                imageVector = ImageVector.vectorResource(R.drawable.ic_timer),
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(16.dp)
+            )
+            Text(
+                text = "Message Cooldown",
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Normal
+                ),
+                color = MaterialTheme.colorScheme.onSurface
+            )
+        }
+
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            IconButton(
+                onClick = {
+                    if (currentIndex > 0) {
+                        onCooldownChanged(cooldownOptions[currentIndex - 1])
+                    }
+                },
+                enabled = currentIndex > 0,
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    imageVector = ImageVector.vectorResource(R.drawable.ic_remove),
+                    contentDescription = "Decrease",
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+
+            Text(
+                text = when (selectedCooldown) {
+                    60 -> "1h"
+                    1 -> "1m"
+                    else -> "${selectedCooldown}m"
+                },
+                style = MaterialTheme.typography.labelMedium.copy(
+                    fontWeight = FontWeight.Medium
+                ),
+                color = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.defaultMinSize(minWidth = 32.dp),
+                textAlign = TextAlign.Center
+            )
+
+            IconButton(
+                onClick = {
+                    if (currentIndex < cooldownOptions.size - 1) {
+                        onCooldownChanged(cooldownOptions[currentIndex + 1])
+                    }
+                },
+                enabled = currentIndex < cooldownOptions.size - 1,
+                modifier = Modifier.size(24.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Add,
+                    contentDescription = "Increase",
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
+}
+
 private fun formatDuration(minutes: Int): String {
     return when {
         minutes == 0 -> "0 minutes"
@@ -1769,6 +1879,7 @@ private fun formatDuration(minutes: Int): String {
             val hours = minutes / 60
             "$hours hour${if (hours != 1) "s" else ""}"
         }
+
         else -> {
             val hours = minutes / 60
             val mins = minutes % 60
