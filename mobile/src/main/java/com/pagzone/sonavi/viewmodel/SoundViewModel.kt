@@ -1,12 +1,16 @@
 package com.pagzone.sonavi.viewmodel
 
+import android.content.Context
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.google.gson.Gson
 import com.pagzone.sonavi.data.repository.SoundRepository
+import com.pagzone.sonavi.domain.SoundEmbeddingModel
 import com.pagzone.sonavi.model.SoundProfile
 import com.pagzone.sonavi.model.UiState
 import dagger.hilt.android.lifecycle.HiltViewModel
+import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -26,7 +30,8 @@ import kotlin.coroutines.cancellation.CancellationException
 
 @HiltViewModel
 class SoundViewModel @Inject constructor(
-    private val repository: SoundRepository
+    private val repository: SoundRepository,
+    @param:ApplicationContext private val appContext: Context
 ) : ViewModel() {
 
     private val _uiState = MutableStateFlow(UiState())
@@ -192,6 +197,39 @@ class SoundViewModel @Inject constructor(
     fun setSoundProfileEnabled(id: Long, enabled: Boolean) {
         viewModelScope.launch {
             repository.setSoundProfileEnabled(id, enabled)
+        }
+    }
+
+    // ViewModel method to create custom sound
+    fun createCustomSound(
+        name: String,
+        audioSamples: List<FloatArray> // 3-5 recordings from user
+    ) {
+        viewModelScope.launch {
+            val embeddingModel = SoundEmbeddingModel(appContext)
+
+            // Extract embeddings from all samples
+            val embeddings = audioSamples.map { audio ->
+                embeddingModel.extractEmbedding(audio)
+            }
+
+            // Average to create prototype
+            val prototypeEmbedding = embeddingModel.averageEmbeddings(embeddings)
+
+            // Store as JSON string
+            val embeddingJson = Gson().toJson(prototypeEmbedding)
+
+            // Save to database
+            val customSound = SoundProfile(
+                name = name,
+                displayName = name,
+                isBuiltIn = false,
+                mfccEmbedding = embeddingJson,
+                threshold = 0.7f // Default similarity threshold
+            )
+
+            repository.addCustomSound(customSound)
+            embeddingModel.cleanup()
         }
     }
 }

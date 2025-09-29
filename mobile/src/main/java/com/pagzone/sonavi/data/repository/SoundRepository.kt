@@ -43,6 +43,20 @@ class SoundRepository @Inject constructor(
         return soundProfileDao.insertProfile(profile)
     }
 
+    suspend fun addCustomSound(customSound: SoundProfile): Long {
+        val profile = SoundProfile(
+            name = customSound.name,
+            displayName = customSound.name,
+            isBuiltIn = false,
+            mfccEmbedding = customSound.mfccEmbedding,
+            yamnetIndices = emptyList(),
+            threshold = customSound.threshold,
+            isCritical = customSound.isCritical,
+            vibrationPattern = customSound.vibrationPattern
+        )
+        return soundProfileDao.insertProfile(profile)
+    }
+
     suspend fun updateSoundProfile(
         soundId: Long,
         threshold: Float? = null,

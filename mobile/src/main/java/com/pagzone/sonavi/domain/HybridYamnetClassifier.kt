@@ -12,8 +12,11 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.SupervisorJob
 import kotlinx.coroutines.launch
 import org.tensorflow.lite.Interpreter
+import java.io.FileInputStream
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
+import java.nio.MappedByteBuffer
+import java.nio.channels.FileChannel
 import java.util.Date
 import kotlin.math.sqrt
 
@@ -40,6 +43,8 @@ class HybridYamnetClassifier(
     // Environment awareness
     private var environmentProfile = EnvironmentProfile()
 
+    private val customSoundClassifier = CustomSoundClassifier(context)
+
     data class EnvironmentProfile(
         var avgNoiseLevel: Float = 0f,
         var dominantFreqBands: List<Int> = emptyList(),
@@ -47,11 +52,8 @@ class HybridYamnetClassifier(
     )
 
     init {
-        val modelBuffer = context.assets.open("yamnnet.tflite").use { it.readBytes() }
-        interpreter = Interpreter(ByteBuffer.allocateDirect(modelBuffer.size).apply {
-            order(ByteOrder.nativeOrder())
-            put(modelBuffer)
-        })
+        val modelBuffer = loadModelFile(context, "yamnnet.tflite")
+        interpreter = Interpreter(modelBuffer)
 
         coroutineScope.launch {
             soundRepository.getAllSounds().collect { value ->
@@ -61,6 +63,17 @@ class HybridYamnetClassifier(
         }
 
         labels = context.assets.open("yamnet_labels.txt").bufferedReader().readLines()
+    }
+
+    fun loadModelFile(context: Context, modelName: String): MappedByteBuffer {
+        val fileDescriptor = context.assets.openFd(modelName)
+        val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
+        val fileChannel = inputStream.channel
+        return fileChannel.map(
+            FileChannel.MapMode.READ_ONLY,
+            fileDescriptor.startOffset,
+            fileDescriptor.declaredLength
+        )
     }
 
     private fun mergePredictions(yamnetScores: FloatArray): Map<SoundProfile, Float> {
@@ -126,44 +139,58 @@ class HybridYamnetClassifier(
 
     // 🔹 Main classify method
     fun classify(audioInput: FloatArray): Pair<SoundProfile?, Float> {
-        // 1. Update environment stats
-        updateEnvironmentProfile(audioInput)
-
-        // 2. Run inference
-        val outputScores = Array(1) { FloatArray(labels.size) }
-        interpreter.run(arrayOf(audioInput), outputScores)
-
+        // Separate built-in and custom sounds
         val allowedSounds = sounds.filter {
             it.isEnabled && (it.snoozedUntil == null || it.snoozedUntil.before(Date()))
         }
 
-        val scores = outputScores[0]
-        val allMerged = mergePredictions(scores)
-        val allowedMerged = allMerged.filterKeys { it in allowedSounds }
+        val builtInSounds = allowedSounds.filter { it.isBuiltIn }
+        val customSounds = allowedSounds.filter { !it.isBuiltIn && it.mfccEmbedding != null }
 
-        Log.d("HybridYamnetClassifier", "Merged: ${allowedMerged.mapKeys { it.key.displayName }}")
-
-        // 3. EMA smoothing
-        updateEma(allowedMerged)
-
-        val filteredScores = emaScores.filterKeys { it in allowedSounds }
-        if (filteredScores.isEmpty()) {
-            Log.d("HybridYamnetClassifier", "No allowed predictions")
-            return null to 0f
+        // 1. Classify built-in sounds with YAMNet (existing logic)
+        val (builtInSound, builtInScore) = if (builtInSounds.isNotEmpty()) {
+            classifyBuiltIn(audioInput, builtInSounds)
+        } else {
+            null to 0f
         }
 
-        // 4. Apply environment adjustments
+        // 2. Classify custom sounds with embeddings
+        val (customSound, customScore) = if (customSounds.isNotEmpty()) {
+            customSoundClassifier.matchCustomSounds(audioInput, customSounds)
+        } else {
+            null to 0f
+        }
+
+        Log.d("HybridClassifier", "Built-in: ${builtInSound?.displayName} = $builtInScore")
+        Log.d("HybridClassifier", "Custom: ${customSound?.displayName} = $customScore")
+
+        // 3. Return highest confidence prediction
+        return if (builtInScore > customScore) {
+            builtInSound to builtInScore
+        } else {
+            customSound to customScore
+        }
+    }
+
+    private fun classifyBuiltIn(audioInput: FloatArray, builtInSounds: List<SoundProfile>): Pair<SoundProfile?, Float> {
+        updateEnvironmentProfile(audioInput)
+
+        val outputScores = Array(1) { FloatArray(labels.size) }
+        interpreter.run(arrayOf(audioInput), outputScores)
+
+        val scores = outputScores[0]
+        val allMerged = mergePredictions(scores)
+        val allowedMerged = allMerged.filterKeys { it in builtInSounds }
+
+        updateEma(allowedMerged)
+
+        val filteredScores = emaScores.filterKeys { it in builtInSounds }
+        if (filteredScores.isEmpty()) return null to 0f
+
         val environmentAdjusted = filteredScores.mapValues { (sound, score) ->
             adjustForEnvironment(sound, score)
         }
 
-        // 5. Get final top prediction
-        val (topSoundProfile, topScore) = getTopPrediction(environmentAdjusted)
-        Log.d(
-            "HybridYamnetClassifier",
-            "Top (env adjusted): ${topSoundProfile?.displayName} -> $topScore"
-        )
-
-        return topSoundProfile to topScore
+        return getTopPrediction(environmentAdjusted)
     }
 }

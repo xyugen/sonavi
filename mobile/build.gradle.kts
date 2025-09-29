@@ -91,4 +91,11 @@ dependencies {
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
     implementation (libs.androidx.room.ktx)
+
+    // TarsosDSP
+    implementation(libs.core)
+    implementation(libs.jvm)
+
+    // https://mvnrepository.com/artifact/com.google.code.gson/gson
+    implementation(libs.gson)
 }

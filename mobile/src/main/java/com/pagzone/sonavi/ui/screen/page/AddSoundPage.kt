@@ -1,88 +1,753 @@
 package com.pagzone.sonavi.ui.screen.page
 
+import android.widget.Toast
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloatAsState
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.tween
+import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.background
+import androidx.compose.foundation.border
+import androidx.compose.foundation.clickable
+import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.Row
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.lazy.LazyColumn
+import androidx.compose.foundation.lazy.itemsIndexed
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.automirrored.filled.ArrowForward
+import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
+import androidx.compose.material.icons.filled.Info
+import androidx.compose.material3.AlertDialog
+import androidx.compose.material3.Button
+import androidx.compose.material3.Card
+import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
-import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
+import androidx.compose.material3.OutlinedButton
+import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Text
+import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableIntStateOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.rememberCoroutineScope
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.scale
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
+import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
+import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import androidx.hilt.navigation.compose.hiltViewModel
 import com.pagzone.sonavi.R
-import com.pagzone.sonavi.ui.component.CustomAlertDialog
-import com.pagzone.sonavi.ui.component.RecordSoundButton
-import com.pagzone.sonavi.ui.component.RecordUploadSegmentedToggle
+import com.pagzone.sonavi.util.AudioRecorder
+import com.pagzone.sonavi.viewmodel.SoundViewModel
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
 
 @Preview(showBackground = true)
 @Composable
-fun AddSoundPage(modifier: Modifier = Modifier) {
-    var selectedIndex by remember { mutableIntStateOf(0) }
-    var showDialog by remember { mutableStateOf(false) }
+fun AddSoundPage(
+    modifier: Modifier = Modifier,
+    viewModel: SoundViewModel = hiltViewModel(),
+    onSoundCreated: () -> Unit = {}
+) {
+    val context = LocalContext.current
+    val audioRecorder = remember { AudioRecorder(context) }
+    val coroutineScope = rememberCoroutineScope()
+
+    var soundName by remember { mutableStateOf("") }
+    var currentStep by remember { mutableStateOf(RecordingStep.NAME) }
+    var recordings by remember { mutableStateOf<List<FloatArray>>(emptyList()) }
+    var isRecording by remember { mutableStateOf(false) }
+    var recordingDuration by remember { mutableIntStateOf(0) }
+    var showHelpDialog by remember { mutableStateOf(false) }
+    var errorMessage by remember { mutableStateOf<String?>(null) }
+
+    // Timer for recording duration
+    LaunchedEffect(isRecording) {
+        if (isRecording) {
+            while (isRecording && recordingDuration < 10) {
+                delay(1000)
+                recordingDuration++
+            }
+            // Auto-stop after 10 seconds
+            if (recordingDuration >= 10) {
+                val audioData = audioRecorder.stopRecording()
+                recordings = recordings + audioData
+                isRecording = false
+                recordingDuration = 0
+            }
+        } else {
+            recordingDuration = 0
+        }
+    }
 
     Column(
         modifier = modifier
-            .fillMaxSize(),
-        horizontalAlignment = Alignment.CenterHorizontally
+            .fillMaxSize()
+            .verticalScroll(rememberScrollState()),
+        verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        IconButton(
-            onClick = {
-                showDialog = true
-            },
-            modifier = Modifier
-                .align(Alignment.End),
-            colors = IconButtonDefaults.iconButtonColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary
-            )
+        // Header with help button
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            Icon(
-                ImageVector.vectorResource(R.drawable.ic_help_outline),
-                contentDescription = "Help"
+            Text(
+                text = "Create Custom Sound",
+                style = MaterialTheme.typography.headlineSmall.copy(
+                    fontWeight = FontWeight.Bold
+                )
             )
+
+            IconButton(onClick = { showHelpDialog = true }) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = "Help"
+                )
+            }
         }
 
-        CustomAlertDialog(
-            showDialog = showDialog,
-            onDismissRequest = { showDialog = false },
-            title = "Add Sounds",
-            text = "Tap the red circle to record up to " +
-                    "10 seconds of nearby sounds. Alternatively, " +
-                    "use the Upload button to add an audio file or " +
-                    "explore developer-created sounds with vibration " +
-                    "patterns via the Samples button.",
-            confirmText = "OK",
-            onConfirmClick = { showDialog = false }
+        // Progress indicator
+        StepProgressIndicator(
+            currentStep = currentStep,
+            modifier = Modifier.fillMaxWidth()
         )
 
-        when (selectedIndex) {
-            0 -> {
-                RecordSoundButton(
-                    modifier = Modifier
-                        .weight(1.5f)
+        Spacer(modifier = Modifier.height(8.dp))
+
+        when (currentStep) {
+            RecordingStep.NAME -> {
+                NameInputStep(
+                    soundName = soundName,
+                    onNameChanged = { soundName = it },
+                    onNext = {
+                        if (soundName.isNotBlank()) {
+                            currentStep = RecordingStep.RECORD
+                        }
+                    }
                 )
             }
 
-            1 -> {
-                Text(text = "Upload", modifier = Modifier.weight(1.5f))
+            RecordingStep.RECORD -> {
+                RecordingSamplesStep(
+                    recordings = recordings,
+                    isRecording = isRecording,
+                    recordingDuration = recordingDuration,
+                    onStartRecording = {
+                        val success = audioRecorder.startRecording { error ->
+                            errorMessage = error
+                        }
+
+                        if (success) {
+                            isRecording = true
+                            errorMessage = null
+                        }
+                    },
+                    onStopRecording = {
+                        val audioData = audioRecorder.stopRecording()
+
+                        if (audioData.size >= 16000) {
+                            recordings = recordings + audioData
+                            errorMessage = null
+                        } else {
+                            errorMessage = "Recording too short (minimum 1 second)"
+                        }
+
+                        isRecording = false
+                        recordingDuration = 0
+                    },
+                    onDeleteRecording = { index ->
+                        recordings = recordings.filterIndexed { i, _ -> i != index }
+                    },
+                    onNext = {
+                        if (recordings.size >= 3) {
+                            currentStep = RecordingStep.PREVIEW
+                        }
+                    },
+                    onBack = { currentStep = RecordingStep.NAME }
+                )
+            }
+
+            RecordingStep.PREVIEW -> {
+                PreviewAndSaveStep(
+                    soundName = soundName,
+                    recordingCount = recordings.size,
+                    onSave = {
+                        coroutineScope.launch {
+                            viewModel.createCustomSound(soundName, recordings)
+                            onSoundCreated()
+                        }
+                    },
+                    onBack = { currentStep = RecordingStep.RECORD }
+                )
+            }
+        }
+    }
+
+    errorMessage?.let { message ->
+        LaunchedEffect(message) {
+            Toast.makeText(context, message, Toast.LENGTH_LONG).show()
+            delay(3000)
+            errorMessage = null
+        }
+    }
+
+    // Cleanup on dispose
+    DisposableEffect(Unit) {
+        onDispose {
+            if (audioRecorder.isRecording()) {
+                audioRecorder.stopRecording()
+            }
+        }
+    }
+}
+
+enum class RecordingStep {
+    NAME, RECORD, PREVIEW
+}
+
+@Composable
+private fun StepProgressIndicator(
+    currentStep: RecordingStep,
+    modifier: Modifier = Modifier
+) {
+    Row(
+        modifier = modifier,
+        horizontalArrangement = Arrangement.spacedBy(8.dp)
+    ) {
+        StepIndicatorItem(
+            label = "Name",
+            isActive = currentStep == RecordingStep.NAME,
+            isCompleted = currentStep.ordinal > RecordingStep.NAME.ordinal,
+            modifier = Modifier.weight(1f)
+        )
+        StepIndicatorItem(
+            label = "Record",
+            isActive = currentStep == RecordingStep.RECORD,
+            isCompleted = currentStep.ordinal > RecordingStep.RECORD.ordinal,
+            modifier = Modifier.weight(1f)
+        )
+        StepIndicatorItem(
+            label = "Save",
+            isActive = currentStep == RecordingStep.PREVIEW,
+            isCompleted = false,
+            modifier = Modifier.weight(1f)
+        )
+    }
+}
+
+@Composable
+private fun StepIndicatorItem(
+    label: String,
+    isActive: Boolean,
+    isCompleted: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        horizontalAlignment = Alignment.CenterHorizontally,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Box(
+            modifier = Modifier
+                .size(8.dp)
+                .clip(CircleShape)
+                .background(
+                    when {
+                        isCompleted -> MaterialTheme.colorScheme.primary
+                        isActive -> MaterialTheme.colorScheme.primary
+                        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                    }
+                )
+        )
+
+        Text(
+            text = label,
+            style = MaterialTheme.typography.labelSmall,
+            color = if (isActive) MaterialTheme.colorScheme.primary
+            else MaterialTheme.colorScheme.onSurfaceVariant
+        )
+    }
+}
+
+@Composable
+private fun NameInputStep(
+    soundName: String,
+    onNameChanged: (String) -> Unit,
+    onNext: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "What sound do you want to detect?",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        OutlinedTextField(
+            value = soundName,
+            onValueChange = onNameChanged,
+            label = { Text("Sound name") },
+            placeholder = { Text("e.g., My dog barking, Baby crying") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = true,
+            shape = RoundedCornerShape(12.dp)
+        )
+
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = ImageVector.vectorResource(R.drawable.ic_lightbulb),
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Choose a specific, unique sound. Generic sounds like \"music\" won't work well.",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurface
+                )
             }
         }
 
-        RecordUploadSegmentedToggle(
-            selectedIndex = selectedIndex,
-            onSelectionChanged = { selectedIndex = it },
+        Spacer(modifier = Modifier.weight(1f))
+
+        Button(
+            onClick = onNext,
+            enabled = soundName.isNotBlank(),
+            modifier = Modifier.fillMaxWidth(),
+            shape = RoundedCornerShape(12.dp)
+        ) {
+            Text("Next")
+            Spacer(Modifier.width(8.dp))
+            Icon(Icons.AutoMirrored.Default.ArrowForward, null, modifier = Modifier.size(18.dp))
+        }
+    }
+}
+
+@Composable
+private fun RecordingSamplesStep(
+    recordings: List<FloatArray>,
+    isRecording: Boolean,
+    recordingDuration: Int,
+    onStartRecording: () -> Unit,
+    onStopRecording: () -> Unit,
+    onDeleteRecording: (Int) -> Unit,
+    onNext: () -> Unit,
+    onBack: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "Record ${3 - recordings.size} more sample${if (3 - recordings.size != 1) "s" else ""}",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        Text(
+            text = "Record the same sound from different angles or distances. This helps the app recognize it better.",
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+
+        // Recording list
+        LazyColumn(
+            modifier = Modifier.weight(1f),
+            verticalArrangement = Arrangement.spacedBy(8.dp)
+        ) {
+            itemsIndexed(recordings) { index, _ ->
+                RecordingItem(
+                    index = index + 1,
+                    onDelete = { onDeleteRecording(index) }
+                )
+            }
+
+            // Placeholders for remaining recordings
+            items(maxOf(0, 3 - recordings.size)) { index ->
+                PlaceholderRecordingItem(index = recordings.size + index + 1)
+            }
+        }
+
+        if (isRecording) {
+            Card(
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.errorContainer
+                )
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(16.dp),
+                    horizontalArrangement = Arrangement.SpaceBetween,
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Row(
+                        horizontalArrangement = Arrangement.spacedBy(8.dp),
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Box(
+                            modifier = Modifier
+                                .size(12.dp)
+                                .clip(CircleShape)
+                                .background(MaterialTheme.colorScheme.error)
+                        )
+                        Text("Recording...")
+                    }
+
+                    Text(
+                        text = "${recordingDuration}s / 10s",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+            }
+        }
+
+        // Record button
+        Box(
+            modifier = Modifier.fillMaxWidth(),
+            contentAlignment = Alignment.Center
+        ) {
+            RecordButton(
+                isRecording = isRecording,
+                onClick = if (isRecording) onStopRecording else onStartRecording,
+                enabled = recordings.size < 5
+            )
+        }
+
+        // Navigation buttons
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedButton(
+                onClick = onBack,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Default.ArrowBack,
+                    null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Back")
+            }
+
+            Button(
+                onClick = onNext,
+                enabled = recordings.size >= 3,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text("Continue")
+                Spacer(Modifier.width(8.dp))
+                Icon(
+                    Icons.AutoMirrored.Default.ArrowForward,
+                    null,
+                    modifier = Modifier.size(18.dp)
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun RecordingItem(
+    index: Int,
+    onDelete: () -> Unit
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+        )
+    ) {
+        Row(
             modifier = Modifier
-                .weight(0.5f)
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Row(
+                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.primary
+                )
+                Text(
+                    text = "Sample $index",
+                    style = MaterialTheme.typography.bodyLarge.copy(
+                        fontWeight = FontWeight.Medium
+                    )
+                )
+            }
+
+            IconButton(onClick = onDelete) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    tint = MaterialTheme.colorScheme.error
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun PlaceholderRecordingItem(index: Int) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+        ),
+        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
+    ) {
+        Row(
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(16.dp),
+            horizontalArrangement = Arrangement.spacedBy(12.dp),
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(24.dp)
+                    .border(
+                        2.dp,
+                        MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
+                        CircleShape
+                    )
+            )
+            Text(
+                text = "Sample $index",
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+        }
+    }
+}
+
+@Composable
+private fun RecordButton(
+    isRecording: Boolean,
+    onClick: () -> Unit,
+    enabled: Boolean
+) {
+    val scale by animateFloatAsState(
+        targetValue = if (isRecording) 1.1f else 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(1000),
+            repeatMode = RepeatMode.Reverse
+        ),
+        label = "recordPulse"
+    )
+
+    Box(
+        modifier = Modifier
+            .size(100.dp)
+            .scale(if (isRecording) scale else 1f)
+            .clip(CircleShape)
+            .background(
+                if (isRecording) MaterialTheme.colorScheme.error
+                else MaterialTheme.colorScheme.primary
+            )
+            .clickable(enabled = enabled) { onClick() },
+        contentAlignment = Alignment.Center
+    ) {
+        Icon(
+            imageVector =
+                if (isRecording) ImageVector.vectorResource(R.drawable.ic_stop)
+                else ImageVector.vectorResource(R.drawable.ic_mic_none),
+            contentDescription = if (isRecording) "Stop recording" else "Start recording",
+            tint = Color.White,
+            modifier = Modifier.size(40.dp)
         )
     }
+}
+
+@Composable
+private fun PreviewAndSaveStep(
+    soundName: String,
+    recordingCount: Int,
+    onSave: () -> Unit,
+    onBack: () -> Unit
+) {
+    Column(
+        modifier = Modifier.fillMaxSize(),
+        verticalArrangement = Arrangement.spacedBy(16.dp)
+    ) {
+        Text(
+            text = "Review your custom sound",
+            style = MaterialTheme.typography.titleMedium
+        )
+
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant
+            )
+        ) {
+            Column(
+                modifier = Modifier.padding(20.dp),
+                verticalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                InfoRow(
+                    label = "Sound name",
+                    value = soundName
+                )
+                InfoRow(
+                    label = "Samples recorded",
+                    value = "$recordingCount"
+                )
+                InfoRow(
+                    label = "Detection method",
+                    value = "AI similarity matching"
+                )
+            }
+        }
+
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.3f)
+            )
+        ) {
+            Row(
+                modifier = Modifier.padding(16.dp),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Info,
+                    contentDescription = null,
+                    tint = MaterialTheme.colorScheme.tertiary
+                )
+                Column {
+                    Text(
+                        text = "What happens next?",
+                        style = MaterialTheme.typography.titleSmall.copy(
+                            fontWeight = FontWeight.SemiBold
+                        )
+                    )
+                    Spacer(Modifier.height(4.dp))
+                    Text(
+                        text = "Your samples will be processed to create a unique sound signature. " +
+                                "The app will then alert you when it detects similar sounds.",
+                        style = MaterialTheme.typography.bodySmall,
+                        lineHeight = 18.sp
+                    )
+                }
+            }
+        }
+
+        Spacer(modifier = Modifier.weight(1f))
+
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedButton(
+                onClick = onBack,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(
+                    Icons.AutoMirrored.Default.ArrowBack,
+                    null,
+                    modifier = Modifier.size(18.dp)
+                )
+                Spacer(Modifier.width(8.dp))
+                Text("Back")
+            }
+
+            Button(
+                onClick = onSave,
+                modifier = Modifier.weight(1f),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp))
+                Spacer(Modifier.width(8.dp))
+                Text("Create Sound")
+            }
+        }
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, value: String) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        Text(
+            text = value,
+            style = MaterialTheme.typography.bodyMedium.copy(
+                fontWeight = FontWeight.Medium
+            )
+        )
+    }
+}
+
+@Composable
+private fun HelpDialog(onDismiss: () -> Unit) {
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        title = { Text("How to Create Custom Sounds") },
+        text = {
+            Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                Text("1. Name your sound specifically (e.g., \"My baby crying\" not just \"baby\")")
+                Text("2. Record 3-5 samples of the same sound from different positions or at different times")
+                Text("3. Make sure the sound is clear and distinct in each recording")
+                Text("4. The app will learn to recognize this specific sound")
+            }
+        },
+        confirmButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Got it")
+            }
+        }
+    )
 }
 
