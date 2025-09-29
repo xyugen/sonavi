@@ -231,7 +231,13 @@ object WearRepositoryImpl : WearRepository {
             Log.d(TAG, "Vibration triggered")
         }
 
-        setSoundPrediction(SoundPrediction(decodedPayload.label, decodedPayload.confidence))
+        setSoundPrediction(
+            SoundPrediction(
+                decodedPayload.label,
+                decodedPayload.confidence,
+                decodedPayload.isCritical
+            )
+        )
 
         Log.d(TAG, "Vibration effect: ${decodedPayload.label} | ${decodedPayload.confidence}")
     }

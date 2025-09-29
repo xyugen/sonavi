@@ -53,9 +53,9 @@ class ClientDataViewModel(
 
     fun toggleListening(enable: Boolean) = repository.toggleListening(enable)
 
-    fun sendPrediction(label: String, confidence: Float, vibration: VibrationEffectDTO) {
+    fun sendPrediction(label: String, confidence: Float, isCritical: Boolean, vibration: VibrationEffectDTO) {
         viewModelScope.launch {
-            repository.sendPrediction(label, confidence, vibration)
+            repository.sendPrediction(label, confidence, isCritical, vibration)
         }
     }
 }

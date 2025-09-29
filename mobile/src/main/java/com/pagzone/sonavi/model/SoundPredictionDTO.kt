@@ -6,5 +6,6 @@ import kotlinx.serialization.Serializable
 data class SoundPredictionDTO(
     val label: String,
     val confidence: Float,
+    val isCritical: Boolean,
     val vibration: VibrationEffectDTO
 )

@@ -61,7 +61,7 @@ interface ClientDataRepository {
     suspend fun handleMessage(messageEvent: MessageEvent)
     fun handleDataChange(dataEvents: DataEventBuffer)
     fun handleCapability(capabilityInfo: CapabilityInfo)
-    fun sendPrediction(label: String, confidence: Float, vibration: VibrationEffectDTO)
+    fun sendPrediction(label: String, confidence: Float, isCritical: Boolean, vibration: VibrationEffectDTO)
 }
 
 object ClientDataRepositoryImpl : ClientDataRepository {
@@ -226,9 +226,7 @@ object ClientDataRepositoryImpl : ClientDataRepository {
         when (channel.path) {
             MIC_AUDIO_PATH -> {
                 val inputStream = channelClient.getInputStream(channel).await()
-                if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.O) {
-                    AudioClassifierService.classifyStream(inputStream, scope)
-                }
+                AudioClassifierService.classifyStream(inputStream, scope)
 
                 Log.d(TAG, "Audio stream closed")
             }
@@ -284,10 +282,10 @@ object ClientDataRepositoryImpl : ClientDataRepository {
         }
     }
 
-    override fun sendPrediction(label: String, confidence: Float, vibration: VibrationEffectDTO) {
+    override fun sendPrediction(label: String, confidence: Float, isCritical: Boolean, vibration: VibrationEffectDTO) {
         Log.d(TAG, "Sending prediction: $label")
 
-        val data = SoundPredictionDTO(label, confidence, vibration)
+        val data = SoundPredictionDTO(label, confidence, isCritical, vibration)
         val jsonString = Json.encodeToString(data)
 
         nodeId.value?.let { id ->

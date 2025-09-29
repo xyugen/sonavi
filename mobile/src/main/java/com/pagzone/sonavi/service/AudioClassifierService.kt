@@ -80,7 +80,10 @@ object AudioClassifierService {
                             )
 
                             clientDataViewModel.sendPrediction(
-                                sound.displayName, confidence, VibrationEffectDTO(
+                                sound.displayName,
+                                confidence,
+                                sound.isCritical,
+                                VibrationEffectDTO(
                                     timings = sound.vibrationPattern,
                                     repeat = -1
                                 )
