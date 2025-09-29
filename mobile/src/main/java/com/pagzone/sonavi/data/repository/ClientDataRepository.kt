@@ -1,7 +1,6 @@
 package com.pagzone.sonavi.data.repository
 
 import android.content.Context
-import android.os.Build
 import android.util.Log
 import androidx.compose.runtime.mutableStateListOf
 import androidx.core.net.toUri
