@@ -57,6 +57,7 @@ import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.ModalBottomSheet
+import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
 import androidx.compose.material3.Slider
@@ -107,11 +108,12 @@ fun LibraryPage(
     modifier: Modifier = Modifier,
     viewModel: SoundViewModel = hiltViewModel()
 ) {
+    var selectedDeleteSound by remember { mutableStateOf<SoundProfile?>(null) }
     var selectedEditSound by remember { mutableStateOf<SoundProfile?>(null) }
     var selectedSnoozeSound by remember { mutableStateOf<SoundProfile?>(null) }
 
     var query by rememberSaveable { mutableStateOf("") }
-    val filters = listOf("All", "Built-in", "Critical", "Snoozed")
+    val filters = listOf("All", "Built-in", "Custom", "Critical", "Snoozed")
     var selectedFilter by rememberSaveable { mutableStateOf<String?>("All") }
 
     val sounds by viewModel.sounds.collectAsStateWithLifecycle()
@@ -136,6 +138,7 @@ fun LibraryPage(
                 filtered = filtered.filter { sound ->
                     when (selectedFilter) {
                         "Built-in" -> sound.isBuiltIn
+                        "Custom" -> !sound.isBuiltIn
                         "Critical" -> sound.isCritical
                         "Snoozed" -> snoozeStatuses[sound.id] ?: false
                         else -> true
@@ -201,8 +204,23 @@ fun LibraryPage(
             onToggleSound = viewModel::setSoundProfileEnabled,
             onEditSound = { selectedEditSound = it },
             onSnoozeSound = { selectedSnoozeSound = it },
-            onUnsnoozeSound = { viewModel.unsnoozeSound(it.id) }
+            onUnsnoozeSound = { viewModel.unsnoozeSound(it.id) },
+            onDeleteSound = { selectedDeleteSound = it }
         )
+
+        selectedDeleteSound?.let { soundProfile ->
+            ConfirmDeleteDialog(
+                title = "Delete this sound profile?",
+                message = "Are you sure you want to delete \"${soundProfile.displayName}\"? This action cannot be undone.",
+                onConfirm = {
+                    viewModel.deleteSoundProfile(soundProfile)
+                    selectedDeleteSound = null
+                },
+                onDismiss = {
+                    selectedDeleteSound = null
+                }
+            )
+        }
 
         selectedEditSound?.let { soundProfile ->
             EditModalSheet(
@@ -263,6 +281,64 @@ private fun EmptySoundsCard() {
     }
 }
 
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+fun ConfirmDeleteDialog(
+    title: String = "Delete Item?",
+    message: String = "Are you sure you want to delete this item? This action cannot be undone.",
+    onConfirm: () -> Unit,
+    onDismiss: () -> Unit,
+) {
+    AlertDialog(
+        onDismissRequest = { onDismiss() },
+        title = {
+            Text(
+                text = title,
+                style = MaterialTheme.typography.titleLarge.copy(
+                    fontWeight = FontWeight.Bold
+                )
+            )
+        },
+        text = {
+            Text(
+                text = message,
+                style = MaterialTheme.typography.bodyMedium.copy(
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            )
+        },
+        confirmButton = {
+            Button(
+                onClick = onConfirm,
+                colors = ButtonDefaults.buttonColors(
+                    containerColor = MaterialTheme.colorScheme.error
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    "Delete",
+                    style = MaterialTheme.typography.labelMedium,
+                    color = MaterialTheme.colorScheme.onError
+                )
+            }
+        },
+        dismissButton = {
+            OutlinedButton(
+                onClick = onDismiss,
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Text(
+                    "Cancel",
+                    style = MaterialTheme.typography.labelMedium
+                )
+            }
+        },
+        shape = RoundedCornerShape(16.dp),
+        tonalElevation = 6.dp,
+        containerColor = MaterialTheme.colorScheme.surface
+    )
+}
+
 @Composable
 private fun SoundList(
     sounds: List<SoundProfile>,
@@ -270,7 +346,8 @@ private fun SoundList(
     onToggleSound: (Long, Boolean) -> Unit,
     onEditSound: (SoundProfile) -> Unit,
     onSnoozeSound: (SoundProfile) -> Unit,
-    onUnsnoozeSound: (SoundProfile) -> Unit
+    onUnsnoozeSound: (SoundProfile) -> Unit,
+    onDeleteSound: (SoundProfile) -> Unit
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(8.dp),
@@ -293,6 +370,7 @@ private fun SoundList(
                         "edit" -> onEditSound(sound)
                         "snooze" -> onSnoozeSound(sound)
                         "unsnooze" -> onUnsnoozeSound(sound)
+                        "delete" -> onDeleteSound(sound)
                     }
                 }
             )
@@ -1615,8 +1693,9 @@ fun SoundCard(
                         color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
                         shape = RoundedCornerShape(6.dp)
                     ) {
+                        val soundLabel = if (sound.isBuiltIn) "Built-in" else "Custom"
                         Text(
-                            text = "Built-in${if (sound.displayName != sound.name) "*" else ""}",
+                            text = "$soundLabel${if (sound.displayName != sound.name) "*" else ""}",
                             style = MaterialTheme.typography.labelSmall.copy(
                                 fontWeight = FontWeight.Medium,
                                 fontSize = 10.sp

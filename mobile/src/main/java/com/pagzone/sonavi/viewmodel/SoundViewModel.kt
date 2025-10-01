@@ -118,6 +118,15 @@ class SoundViewModel @Inject constructor(
         }
     }
 
+    fun deleteSoundProfile(soundProfile: SoundProfile) = viewModelScope.launch {
+        try {
+            repository.deleteCustomSound(soundProfile.id)
+            _uiState.value = _uiState.value.copy(message = "Sound profile updated successfully")
+        } catch (e: Exception) {
+            _uiState.value = _uiState.value.copy(error = e.message)
+        }
+    }
+
     private fun isSnoozed(sound: SoundProfile): Boolean {
         return sound.snoozedUntil?.after(Date()) == true
     }

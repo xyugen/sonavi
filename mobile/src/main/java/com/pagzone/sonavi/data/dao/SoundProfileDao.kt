@@ -12,7 +12,7 @@ import java.util.Date
 
 @Dao
 interface SoundProfileDao {
-    @Query("SELECT * FROM sound_profiles ORDER BY isBuiltIn DESC, name ASC")
+    @Query("SELECT * FROM sound_profiles ORDER BY name ASC")
     fun getAllProfiles(): Flow<List<SoundProfile>>
 
     @Query("SELECT * FROM sound_profiles WHERE isEnabled = 1")
