@@ -238,8 +238,8 @@ class SoundViewModel @Inject constructor(
 
                 // Save to database
                 val customSound = SoundProfile(
-                    name = "Augmented: $name",
-                    displayName = "Augmented: $name",
+                    name = name,
+                    displayName = name,
                     isBuiltIn = false,
                     mfccEmbedding = embeddingJson,
                     threshold = threshold
