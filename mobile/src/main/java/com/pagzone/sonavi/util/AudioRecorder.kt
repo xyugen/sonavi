@@ -7,13 +7,14 @@ import android.media.AudioFormat
 import android.media.AudioRecord
 import android.media.MediaRecorder
 import android.util.Log
-import androidx.annotation.RequiresPermission
 import androidx.core.app.ActivityCompat
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.NonCancellable.isActive
 import kotlinx.coroutines.launch
+import kotlin.math.pow
+import kotlin.math.sqrt
 
 class AudioRecorder(private val context: Context) {
     private val sampleRate = 16000
@@ -23,6 +24,20 @@ class AudioRecorder(private val context: Context) {
     private var audioRecord: AudioRecord? = null
     private var recordingJob: Job? = null
     private var recordedData = mutableListOf<Short>()
+
+    private var recentSamples = mutableListOf<Short>()
+    private val maxRecentSamples = 160 // 10ms worth at 16kHz
+
+    fun getCurrentAmplitude(): Float {
+        if (recentSamples.isEmpty()) return 0f
+
+        // Calculate RMS of recent samples
+        val rms = sqrt(
+            recentSamples.map { (it / 32768.0).pow(2) }.average()
+        ).toFloat()
+
+        return (rms * 5f).coerceIn(0f, 1f) // Scale and clamp
+    }
 
     fun startRecording(onError: (String) -> Unit = {}): Boolean {
         // Check permission first
@@ -80,17 +95,13 @@ class AudioRecorder(private val context: Context) {
                 while (isActive && audioRecord?.recordingState == AudioRecord.RECORDSTATE_RECORDING) {
                     val readSize = audioRecord?.read(buffer, 0, buffer.size) ?: 0
 
-                    when {
-                        readSize > 0 -> {
-                            recordedData.addAll(buffer.take(readSize))
-                        }
-                        readSize == AudioRecord.ERROR_INVALID_OPERATION -> {
-                            Log.e("AudioRecorder", "Invalid operation during read")
-                            break
-                        }
-                        readSize == AudioRecord.ERROR_BAD_VALUE -> {
-                            Log.e("AudioRecorder", "Bad value during read")
-                            break
+                    if (readSize > 0) {
+                        recordedData.addAll(buffer.take(readSize))
+
+                        // Keep recent samples for amplitude calculation
+                        recentSamples.addAll(buffer.take(readSize))
+                        if (recentSamples.size > maxRecentSamples) {
+                            recentSamples = recentSamples.takeLast(maxRecentSamples).toMutableList()
                         }
                     }
                 }
@@ -127,7 +138,7 @@ class AudioRecorder(private val context: Context) {
             recordedData[i] / 32768.0f
         }
 
-        recordedData.clear()
+        recentSamples.clear()
         return floatData
     }
 

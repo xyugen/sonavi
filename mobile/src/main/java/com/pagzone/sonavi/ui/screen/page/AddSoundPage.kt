@@ -6,6 +6,7 @@ import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
@@ -17,6 +18,7 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -47,7 +49,9 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableFloatStateOf
 import androidx.compose.runtime.mutableIntStateOf
+import androidx.compose.runtime.mutableStateListOf
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.rememberCoroutineScope
@@ -56,6 +60,9 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
@@ -89,6 +96,21 @@ fun AddSoundPage(
     var recordingDuration by remember { mutableIntStateOf(0) }
     var showHelpDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
+    var currentAudioAmplitude by remember { mutableFloatStateOf(0f) }
+    var audioWaveform by remember { mutableStateOf<List<Float>>(emptyList()) }
+
+    // Monitor audio amplitude during recording
+    LaunchedEffect(isRecording) {
+        if (isRecording) {
+            while (isRecording) {
+                currentAudioAmplitude = audioRecorder.getCurrentAmplitude()
+                delay(50) // Update 20 times per second
+            }
+        } else {
+            currentAudioAmplitude = 0f
+            audioWaveform = emptyList()
+        }
+    }
 
     // Timer for recording duration
     LaunchedEffect(isRecording) {
@@ -97,10 +119,11 @@ fun AddSoundPage(
                 delay(1000)
                 recordingDuration++
             }
-            // Auto-stop after 10 seconds
             if (recordingDuration >= 10) {
                 val audioData = audioRecorder.stopRecording()
-                recordings = recordings + audioData
+                if (audioData.size >= 16000) {
+                    recordings = recordings + audioData
+                }
                 isRecording = false
                 recordingDuration = 0
             }
@@ -109,13 +132,21 @@ fun AddSoundPage(
         }
     }
 
+    fun resetAddSound() {
+        soundName = ""
+        currentStep = RecordingStep.NAME
+        recordings = emptyList()
+        isRecording = false
+        recordingDuration = 0
+        audioWaveform = emptyList()
+    }
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .verticalScroll(rememberScrollState()),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
-        // Header with help button
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
@@ -127,21 +158,12 @@ fun AddSoundPage(
                     fontWeight = FontWeight.Bold
                 )
             )
-
             IconButton(onClick = { showHelpDialog = true }) {
-                Icon(
-                    imageVector = Icons.Default.Info,
-                    contentDescription = "Help"
-                )
+                Icon(Icons.Default.Info, contentDescription = "Help")
             }
         }
 
-        // Progress indicator
-        StepProgressIndicator(
-            currentStep = currentStep,
-            modifier = Modifier.fillMaxWidth()
-        )
-
+        StepProgressIndicator(currentStep, Modifier.fillMaxWidth())
         Spacer(modifier = Modifier.height(8.dp))
 
         when (currentStep) {
@@ -162,11 +184,11 @@ fun AddSoundPage(
                     recordings = recordings,
                     isRecording = isRecording,
                     recordingDuration = recordingDuration,
+                    currentAmplitude = currentAudioAmplitude,
                     onStartRecording = {
                         val success = audioRecorder.startRecording { error ->
                             errorMessage = error
                         }
-
                         if (success) {
                             isRecording = true
                             errorMessage = null
@@ -174,19 +196,22 @@ fun AddSoundPage(
                     },
                     onStopRecording = {
                         val audioData = audioRecorder.stopRecording()
-
                         if (audioData.size >= 16000) {
                             recordings = recordings + audioData
                             errorMessage = null
                         } else {
                             errorMessage = "Recording too short (minimum 1 second)"
                         }
-
                         isRecording = false
                         recordingDuration = 0
                     },
                     onDeleteRecording = { index ->
                         recordings = recordings.filterIndexed { i, _ -> i != index }
+                    },
+                    onDeleteLast = {
+                        if (recordings.isNotEmpty()) {
+                            recordings = recordings.dropLast(1)
+                        }
                     },
                     onNext = {
                         if (recordings.size >= 3) {
@@ -204,6 +229,7 @@ fun AddSoundPage(
                     onSave = {
                         coroutineScope.launch {
                             viewModel.createCustomSound(soundName, recordings)
+                            resetAddSound()
                             onSoundCreated()
                         }
                     },
@@ -221,7 +247,10 @@ fun AddSoundPage(
         }
     }
 
-    // Cleanup on dispose
+    if (showHelpDialog) {
+        HelpDialog(onDismiss = { showHelpDialog = false })
+    }
+
     DisposableEffect(Unit) {
         onDispose {
             if (audioRecorder.isRecording()) {
@@ -366,9 +395,11 @@ private fun RecordingSamplesStep(
     recordings: List<FloatArray>,
     isRecording: Boolean,
     recordingDuration: Int,
+    currentAmplitude: Float,
     onStartRecording: () -> Unit,
     onStopRecording: () -> Unit,
     onDeleteRecording: (Int) -> Unit,
+    onDeleteLast: () -> Unit,
     onNext: () -> Unit,
     onBack: () -> Unit
 ) {
@@ -376,20 +407,55 @@ private fun RecordingSamplesStep(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
-        Text(
-            text = "Record ${3 - recordings.size} more sample${if (3 - recordings.size != 1) "s" else ""}",
-            style = MaterialTheme.typography.titleMedium
-        )
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Column {
+                Text(
+                    text = "Record samples",
+                    style = MaterialTheme.typography.titleMedium
+                )
+                Text(
+                    text = "${recordings.size} recorded (minimum 3)",
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+
+            if (recordings.isNotEmpty() && !isRecording) {
+                TextButton(onClick = onDeleteLast) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.ic_close), // TODO: undo icon
+                        contentDescription = null,
+                        modifier = Modifier.size(16.dp)
+                    )
+                    Spacer(Modifier.width(4.dp))
+                    Text("Undo Last")
+                }
+            }
+        }
 
         Text(
-            text = "Record the same sound from different angles or distances. This helps the app recognize it better.",
+            text = "Record the same sound from different angles or distances.",
             style = MaterialTheme.typography.bodyMedium,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
 
+        // Visual waveform feedback
+        if (isRecording) {
+            AudioVisualizerCard(
+                amplitude = currentAmplitude,
+                duration = recordingDuration
+            )
+        }
+
         // Recording list
         LazyColumn(
-            modifier = Modifier.weight(1f),
+            modifier = Modifier
+                .weight(1f)
+                .heightIn(min = 150.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             itemsIndexed(recordings) { index, _ ->
@@ -399,43 +465,10 @@ private fun RecordingSamplesStep(
                 )
             }
 
-            // Placeholders for remaining recordings
-            items(maxOf(0, 3 - recordings.size)) { index ->
-                PlaceholderRecordingItem(index = recordings.size + index + 1)
-            }
-        }
-
-        if (isRecording) {
-            Card(
-                colors = CardDefaults.cardColors(
-                    containerColor = MaterialTheme.colorScheme.errorContainer
-                )
-            ) {
-                Row(
-                    modifier = Modifier
-                        .fillMaxWidth()
-                        .padding(16.dp),
-                    horizontalArrangement = Arrangement.SpaceBetween,
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Row(
-                        horizontalArrangement = Arrangement.spacedBy(8.dp),
-                        verticalAlignment = Alignment.CenterVertically
-                    ) {
-                        Box(
-                            modifier = Modifier
-                                .size(12.dp)
-                                .clip(CircleShape)
-                                .background(MaterialTheme.colorScheme.error)
-                        )
-                        Text("Recording...")
-                    }
-
-                    Text(
-                        text = "${recordingDuration}s / 10s",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold
-                    )
+            // Show placeholders only if less than 3
+            if (recordings.size < 3) {
+                items(3 - recordings.size) { index ->
+                    PlaceholderRecordingItem(index = recordings.size + index + 1)
                 }
             }
         }
@@ -448,7 +481,7 @@ private fun RecordingSamplesStep(
             RecordButton(
                 isRecording = isRecording,
                 onClick = if (isRecording) onStopRecording else onStartRecording,
-                enabled = recordings.size < 5
+                enabled = recordings.size < 10 // Max 10 samples
             )
         }
 
@@ -459,32 +492,110 @@ private fun RecordingSamplesStep(
         ) {
             OutlinedButton(
                 onClick = onBack,
+                enabled = !isRecording,
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp)
             ) {
-                Icon(
-                    Icons.AutoMirrored.Default.ArrowBack,
-                    null,
-                    modifier = Modifier.size(18.dp)
-                )
+                Icon(Icons.AutoMirrored.Default.ArrowBack, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text("Back")
             }
 
             Button(
                 onClick = onNext,
-                enabled = recordings.size >= 3,
+                enabled = recordings.size >= 3 && !isRecording,
                 modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Text("Continue")
                 Spacer(Modifier.width(8.dp))
-                Icon(
-                    Icons.AutoMirrored.Default.ArrowForward,
-                    null,
-                    modifier = Modifier.size(18.dp)
+                Icon(Icons.AutoMirrored.Default.ArrowForward, null, modifier = Modifier.size(18.dp))
+            }
+        }
+    }
+}
+
+@Composable
+private fun AudioVisualizerCard(
+    amplitude: Float,
+    duration: Int
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(20.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.error)
+                    )
+                    Text(
+                        text = "Recording",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                Text(
+                    text = "${duration}s / 10s",
+                    style = MaterialTheme.typography.labelLarge,
+                    fontWeight = FontWeight.Bold,
+                    color = MaterialTheme.colorScheme.primary
                 )
             }
+
+            // Waveform visualization
+            WaveformVisualizer(
+                amplitude = amplitude,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(80.dp)
+            )
+        }
+    }
+}
+
+@Composable
+private fun WaveformVisualizer(
+    amplitude: Float,
+    modifier: Modifier = Modifier
+) {
+    val amplitudeHistory = remember { mutableStateListOf<Float>().apply { repeat(50) { add(0f) } } }
+
+    LaunchedEffect(amplitude) {
+        if (amplitudeHistory.size >= 50) amplitudeHistory.removeAt(0)
+        amplitudeHistory.add(amplitude)
+    }
+
+    Canvas(modifier = modifier) {
+        val barWidth = size.width / amplitudeHistory.size
+        val centerY = size.height / 2
+
+        amplitudeHistory.forEachIndexed { index, amp ->
+            val barHeight = (amp * size.height * 0.8f).coerceIn(4f, size.height)
+            val x = index * barWidth
+            drawRoundRect(
+                color = Color(0xFF4CAF50),
+                topLeft = Offset(x, centerY - barHeight / 2),
+                size = Size(barWidth - 2f, barHeight),
+                cornerRadius = CornerRadius(2f, 2f)
+            )
         }
     }
 }
@@ -685,7 +796,6 @@ private fun PreviewAndSaveStep(
         ) {
             OutlinedButton(
                 onClick = onBack,
-                modifier = Modifier.weight(1f),
                 shape = RoundedCornerShape(12.dp)
             ) {
                 Icon(
