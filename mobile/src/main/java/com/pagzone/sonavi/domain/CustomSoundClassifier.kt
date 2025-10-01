@@ -2,8 +2,8 @@ package com.pagzone.sonavi.domain
 
 import android.content.Context
 import android.util.Log
-import com.google.gson.Gson
 import com.pagzone.sonavi.model.SoundProfile
+import com.pagzone.sonavi.util.Helper.Companion.parseEmbedding
 import kotlin.math.sqrt
 
 class CustomSoundClassifier(context: Context) {
@@ -52,8 +52,10 @@ class CustomSoundClassifier(context: Context) {
             // Calculate similarity
             val similarity = cosineSimilarity(audioEmbedding, storedEmbedding)
 
-            Log.d("CustomClassifier",
-                "Sound: ${sound.name}, Similarity: $similarity, Threshold: ${sound.threshold}")
+            Log.d(
+                "CustomClassifier",
+                "Sound: ${sound.name}, Similarity: $similarity, Threshold: ${sound.threshold}"
+            )
 
             sound to similarity
         }
@@ -85,18 +87,5 @@ class CustomSoundClassifier(context: Context) {
 
             Triple(sound, similarity, isMatch)
         }.sortedByDescending { it.second }
-    }
-
-    // Parse embedding from JSON string
-    private fun parseEmbedding(embeddingString: String?): FloatArray? {
-        if (embeddingString.isNullOrBlank()) return null
-
-        return try {
-            val gson = Gson()
-            gson.fromJson(embeddingString, FloatArray::class.java)
-        } catch (e: Exception) {
-            Log.e("CustomClassifier", "Error parsing embedding", e)
-            null
-        }
     }
 }

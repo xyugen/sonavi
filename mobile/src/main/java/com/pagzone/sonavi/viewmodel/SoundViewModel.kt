@@ -9,7 +9,9 @@ import com.pagzone.sonavi.data.repository.SoundRepository
 import com.pagzone.sonavi.domain.SoundEmbeddingModel
 import com.pagzone.sonavi.model.SoundProfile
 import com.pagzone.sonavi.model.UiState
-import com.pagzone.sonavi.util.Helper
+import com.pagzone.sonavi.util.Helper.Companion.averageEmbeddings
+import com.pagzone.sonavi.util.Helper.Companion.calculateEmbeddingQuality
+import com.pagzone.sonavi.util.Helper.Companion.normalizeEmbedding
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.Job
@@ -28,7 +30,6 @@ import kotlinx.coroutines.launch
 import java.util.Date
 import javax.inject.Inject
 import kotlin.coroutines.cancellation.CancellationException
-import kotlin.math.sqrt
 
 @HiltViewModel
 class SoundViewModel @Inject constructor(
@@ -214,34 +215,35 @@ class SoundViewModel @Inject constructor(
                 Log.d("ViewModel", "Creating custom sound: $name with ${audioSamples.size} samples")
 
                 // Extract embeddings from all samples
-                val embeddings = audioSamples.mapIndexed { index, audio ->
+                val augmentedEmbeddings = audioSamples.mapIndexed { index, audio ->
                     Log.d("ViewModel", "Processing sample ${index + 1}/${audioSamples.size}")
-                    embeddingModel.extractEmbeddingFromLongAudio(audio)
+                    embeddingModel.extractEmbeddingWithPreprocessing(audio)
                 }
 
                 // Average embeddings to create prototype
-                val prototypeEmbedding = Helper.averageEmbeddings(embeddings)
+                val prototypeEmbedding = averageEmbeddings(augmentedEmbeddings)
 
                 // Optional: L2 normalize for better similarity matching
-                val normalizedEmbedding = Helper.normalizeEmbedding(prototypeEmbedding)
+                val normalizedEmbedding = normalizeEmbedding(prototypeEmbedding)
 
                 // Calculate quality metrics (optional but useful)
-                val quality = Helper.calculateEmbeddingQuality(embeddings)
-                Log.d("ViewModel", "Embedding quality - variance: ${quality.first}, consistency: ${quality.second}")
+                val quality = calculateEmbeddingQuality(augmentedEmbeddings)
+                Log.d(
+                    "ViewModel",
+                    "Embedding quality2 - variance: ${quality.first}, consistency: ${quality.second}"
+                )
 
                 // Store as JSON string
                 val embeddingJson = Gson().toJson(normalizedEmbedding)
 
                 // Save to database
                 val customSound = SoundProfile(
-                    name = name,
-                    displayName = name,
+                    name = "Augmented: $name",
+                    displayName = "Augmented: $name",
                     isBuiltIn = false,
                     mfccEmbedding = embeddingJson,
                     threshold = threshold
                 )
-
-                Log.d("SoundViewModel", "Embedding JSON: $embeddingJson")
 
                 repository.addCustomSound(customSound)
                 Log.d("SoundViewModel", "Custom sound saved successfully")

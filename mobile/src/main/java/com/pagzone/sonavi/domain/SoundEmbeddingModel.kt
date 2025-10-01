@@ -4,6 +4,7 @@ import android.content.Context
 import android.util.Log
 import com.pagzone.sonavi.util.Helper
 import org.tensorflow.lite.Interpreter
+import kotlin.math.abs
 import kotlin.math.sqrt
 
 class SoundEmbeddingModel(context: Context) {
@@ -35,7 +36,7 @@ class SoundEmbeddingModel(context: Context) {
         }
 
         // Normalize audio to [-1, 1] range (important for YAMNet!)
-        val maxAbs = processedAudio.maxOfOrNull { kotlin.math.abs(it) } ?: 1f
+        val maxAbs = processedAudio.maxOfOrNull { abs(it) } ?: 1f
         val normalizedAudio = if (maxAbs > 0) {
             processedAudio.map { it / maxAbs }.toFloatArray()
         } else {
@@ -107,6 +108,63 @@ class SoundEmbeddingModel(context: Context) {
 
         Log.d("YAMNetEmbedding", "Averaged ${embeddings.size} chunks")
         return avgEmbedding
+    }
+
+    // Simple noise gate (removes quiet background noise)
+    private fun applyNoiseGate(audio: FloatArray, threshold: Float = 0.02f): FloatArray {
+        val smoothed = movingAverageSmooth(audio, windowSize = 100)
+        return audio.mapIndexed { i, sample ->
+            if (abs(smoothed[i]) < threshold) sample * 0.3f else sample
+        }.toFloatArray()
+    }
+
+    private fun movingAverageSmooth(
+        audio: FloatArray,
+        windowSize: Int
+    ): FloatArray {
+        if (windowSize <= 1) return audio.copyOf()
+
+        val smoothed = FloatArray(audio.size)
+        var windowSum = 0.0f
+
+        // Initialize first window
+        for (i in 0 until windowSize.coerceAtMost(audio.size)) {
+            windowSum += audio[i]
+            smoothed[i] = windowSum / (i + 1)
+        }
+
+        // Slide the window
+        for (i in windowSize until audio.size) {
+            windowSum += audio[i]
+            windowSum -= audio[i - windowSize]
+            smoothed[i] = windowSum / windowSize
+        }
+
+        return smoothed
+    }
+
+    // High-pass filter (removes low-frequency rumble)
+    private fun highPassFilter(
+        audio: FloatArray,
+        cutoffHz: Float = 80f,
+        sampleRate: Int = 16000
+    ): FloatArray {
+        val rc = 1.0f / (2.0f * Math.PI.toFloat() * cutoffHz)
+        val dt = 1.0f / sampleRate
+        val alpha = rc / (rc + dt)
+
+        val filtered = FloatArray(audio.size)
+        filtered[0] = audio[0]
+
+        for (i in 1 until audio.size) {
+            filtered[i] = alpha * (filtered[i - 1] + audio[i] - audio[i - 1])
+        }
+        return filtered
+    }
+
+    fun extractEmbeddingWithPreprocessing(audioInput: FloatArray): FloatArray {
+        val cleaned = highPassFilter(applyNoiseGate(audioInput))
+        return extractEmbeddingFromLongAudio(cleaned)
     }
 
     fun cleanup() {

@@ -1,6 +1,8 @@
 package com.pagzone.sonavi.util
 
 import android.content.Context
+import android.util.Log
+import com.google.gson.Gson
 import java.io.FileInputStream
 import java.nio.MappedByteBuffer
 import java.nio.channels.FileChannel
@@ -97,6 +99,19 @@ class Helper {
 
             val denominator = sqrt(normA) * sqrt(normB)
             return if (denominator > 0f) dotProduct / denominator else 0f
+        }
+
+        // Parse embedding from JSON string
+        fun parseEmbedding(embeddingString: String?): FloatArray? {
+            if (embeddingString.isNullOrBlank()) return null
+
+            return try {
+                val gson = Gson()
+                gson.fromJson(embeddingString, FloatArray::class.java)
+            } catch (e: Exception) {
+                Log.e("CustomClassifier", "Error parsing embedding", e)
+                null
+            }
         }
     }
 }
