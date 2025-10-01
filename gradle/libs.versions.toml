@@ -6,6 +6,7 @@ gson = "2.13.2"
 hiltAndroid = "2.57.1"
 hiltNavigationFragment = "1.2.0"
 kotlin = "2.2.0"
+kotlin_speech_features = "1.0.0"
 ksp = "2.2.0-2.0.2"
 coreKtx = "1.17.0"
 junit = "4.13.2"
@@ -59,6 +60,7 @@ androidx-ui-test-manifest = { group = "androidx.compose.ui", name = "ui-test-man
 androidx-ui-test-junit4 = { group = "androidx.compose.ui", name = "ui-test-junit4" }
 androidx-material3 = { group = "androidx.compose.material3", name = "material3" }
 jvm = { module = "be.tarsos.dsp:jvm", version.ref = "core" }
+kotlin_speech_features = { module = "com.github.MerlynMind:kotlin_speech_features", version.ref = "kotlin_speech_features" }
 kotlinx-coroutines-play-services = { module = "org.jetbrains.kotlinx:kotlinx-coroutines-play-services", version.ref = "kotlinxCoroutinesPlayServices" }
 kotlinx-serialization-json = { module = "org.jetbrains.kotlinx:kotlinx-serialization-json", version.ref = "kotlinxSerializationJson" }
 litert-support = { module = "com.google.ai.edge.litert:litert-support", version.ref = "litertSupport" }

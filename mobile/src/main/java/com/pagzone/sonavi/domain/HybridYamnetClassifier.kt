@@ -6,6 +6,7 @@ import com.pagzone.sonavi.data.repository.SoundRepository
 import com.pagzone.sonavi.di.AudioClassifierEntryPoint
 import com.pagzone.sonavi.model.SoundProfile
 import com.pagzone.sonavi.util.Constants
+import com.pagzone.sonavi.util.Helper
 import dagger.hilt.android.EntryPointAccessors
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -52,7 +53,7 @@ class HybridYamnetClassifier(
     )
 
     init {
-        val modelBuffer = loadModelFile(context, "yamnnet.tflite")
+        val modelBuffer = Helper.loadModelFile(context, "yamnnet.tflite")
         interpreter = Interpreter(modelBuffer)
 
         coroutineScope.launch {
@@ -63,17 +64,6 @@ class HybridYamnetClassifier(
         }
 
         labels = context.assets.open("yamnet_labels.txt").bufferedReader().readLines()
-    }
-
-    fun loadModelFile(context: Context, modelName: String): MappedByteBuffer {
-        val fileDescriptor = context.assets.openFd(modelName)
-        val inputStream = FileInputStream(fileDescriptor.fileDescriptor)
-        val fileChannel = inputStream.channel
-        return fileChannel.map(
-            FileChannel.MapMode.READ_ONLY,
-            fileDescriptor.startOffset,
-            fileDescriptor.declaredLength
-        )
     }
 
     private fun mergePredictions(yamnetScores: FloatArray): Map<SoundProfile, Float> {
@@ -137,7 +127,7 @@ class HybridYamnetClassifier(
         return score * noisyBoost
     }
 
-    // 🔹 Main classify method
+    // Main classify method
     fun classify(audioInput: FloatArray): Pair<SoundProfile?, Float> {
         // Separate built-in and custom sounds
         val allowedSounds = sounds.filter {

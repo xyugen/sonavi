@@ -13,7 +13,7 @@ android {
 
     defaultConfig {
         applicationId = "com.pagzone.sonavi"
-        minSdk = 26
+        minSdk = 27
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -90,11 +90,10 @@ dependencies {
     // Room
     implementation(libs.androidx.room.runtime)
     ksp(libs.androidx.room.compiler)
-    implementation (libs.androidx.room.ktx)
+    implementation(libs.androidx.room.ktx)
 
-    // TarsosDSP
-    implementation(libs.core)
-    implementation(libs.jvm)
+    // https://github.com/EmergenceAI/kotlin_speech_features
+    implementation(libs.kotlin.speech.features)
 
     // https://mvnrepository.com/artifact/com.google.code.gson/gson
     implementation(libs.gson)
