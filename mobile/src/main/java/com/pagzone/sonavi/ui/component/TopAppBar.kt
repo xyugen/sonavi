@@ -52,31 +52,9 @@ fun TopAppBar(
             horizontalArrangement = Arrangement.SpaceBetween
         ) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                Box(
-                    modifier = Modifier
-                        .size(48.dp)
-                        .clip(CircleShape)
-                        .background(Gray10)
-                )
-                Spacer(modifier = Modifier.width(10.dp))
                 Text(title, style = MaterialTheme.typography.titleLarge)
             }
             Row {
-                IconButton(
-                    onClick = { /* Handle click */ },
-                    modifier = Modifier.size(48.dp),
-                    colors = IconButtonDefaults.iconButtonColors(
-                        containerColor = MaterialTheme.colorScheme.primary,
-                        contentColor = MaterialTheme.colorScheme.onPrimary
-                    )
-                ) {
-                    Icon(
-                        modifier = Modifier.size(28.dp),
-                        imageVector = ImageVector.vectorResource(R.drawable.ic_notifications_none),
-                        contentDescription = "Notifications",
-                    )
-                }
-                Spacer(modifier = Modifier.width(10.dp))
                 IconButton(
                     onClick = {
                         navController.navigate(NavRoute.Profile.route) {

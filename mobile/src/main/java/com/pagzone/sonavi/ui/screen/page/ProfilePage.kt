@@ -771,7 +771,7 @@ fun EditProfileDialog(
 fun TopBar(title: String, navController: NavHostController, modifier: Modifier = Modifier) {
     Row(
         modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween
+        horizontalArrangement = Arrangement.Start
     ) {
         Row(verticalAlignment = Alignment.CenterVertically) {
             IconButton(
@@ -790,30 +790,6 @@ fun TopBar(title: String, navController: NavHostController, modifier: Modifier =
             }
             Spacer(modifier = Modifier.width(10.dp))
             Text(title, style = MaterialTheme.typography.titleLarge)
-        }
-        Row {
-            IconButton(
-                onClick = {
-                    navController.navigate(NavRoute.Profile.route) {
-                        popUpTo(navController.graph.startDestinationId) {
-                            saveState = true
-                        }
-                        launchSingleTop = true
-                        restoreState = true
-                    }
-                },
-                modifier = Modifier.size(48.dp),
-                colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            ) {
-                Icon(
-                    modifier = Modifier.size(28.dp),
-                    imageVector = ImageVector.vectorResource(R.drawable.ic_notifications_none),
-                    contentDescription = "Notifications"
-                )
-            }
         }
     }
 }
