@@ -19,6 +19,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.heightIn
+import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
@@ -36,8 +37,10 @@ import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
+import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -162,7 +165,6 @@ fun AddSoundPage(
         }
 
         StepProgressIndicator(currentStep, Modifier.fillMaxWidth())
-        Spacer(modifier = Modifier.height(8.dp))
 
         when (currentStep) {
             RecordingStep.NAME -> {
@@ -228,6 +230,8 @@ fun AddSoundPage(
                         coroutineScope.launch {
                             viewModel.createCustomSound(soundName, recordings)
                             resetAddSound()
+                            Toast.makeText(context, "Sound saved successfully", Toast.LENGTH_LONG)
+                                .show()
                             onSoundCreated()
                         }
                     },
@@ -263,31 +267,42 @@ enum class RecordingStep {
 }
 
 @Composable
-private fun StepProgressIndicator(
+fun StepProgressIndicator(
     currentStep: RecordingStep,
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier,
-        horizontalArrangement = Arrangement.spacedBy(8.dp)
+        modifier = modifier.fillMaxWidth(),
+        verticalAlignment = Alignment.CenterVertically
     ) {
         StepIndicatorItem(
             label = "Name",
             isActive = currentStep == RecordingStep.NAME,
-            isCompleted = currentStep.ordinal > RecordingStep.NAME.ordinal,
-            modifier = Modifier.weight(1f)
+            isCompleted = currentStep.ordinal > RecordingStep.NAME.ordinal
         )
+
+        StepConnector(
+            isCompleted = currentStep.ordinal > RecordingStep.NAME.ordinal,
+            isActive = currentStep >= RecordingStep.RECORD,
+            modifier = Modifier.weight(1f).offset(y = (-10).dp)
+        )
+
         StepIndicatorItem(
             label = "Record",
             isActive = currentStep == RecordingStep.RECORD,
-            isCompleted = currentStep.ordinal > RecordingStep.RECORD.ordinal,
-            modifier = Modifier.weight(1f)
+            isCompleted = currentStep.ordinal > RecordingStep.RECORD.ordinal
         )
+
+        StepConnector(
+            isCompleted = currentStep.ordinal > RecordingStep.RECORD.ordinal,
+            isActive = currentStep >= RecordingStep.PREVIEW,
+            modifier = Modifier.weight(1f).offset(y = (-10).dp)
+        )
+
         StepIndicatorItem(
             label = "Save",
             isActive = currentStep == RecordingStep.PREVIEW,
-            isCompleted = false,
-            modifier = Modifier.weight(1f)
+            isCompleted = false
         )
     }
 }
@@ -301,30 +316,64 @@ private fun StepIndicatorItem(
 ) {
     Column(
         modifier = modifier,
-        horizontalAlignment = Alignment.CenterHorizontally,
-        verticalArrangement = Arrangement.spacedBy(4.dp)
+        horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Box(
+            contentAlignment = Alignment.Center,
             modifier = Modifier
-                .size(8.dp)
+                .size(24.dp) // bigger than before
                 .clip(CircleShape)
                 .background(
                     when {
                         isCompleted -> MaterialTheme.colorScheme.primary
-                        isActive -> MaterialTheme.colorScheme.primary
-                        else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                        isActive -> MaterialTheme.colorScheme.primary.copy(alpha = 0.9f)
+                        else -> MaterialTheme.colorScheme.surfaceVariant
                     }
                 )
-        )
+        ) {
+            if (isCompleted) {
+                Icon(
+                    imageVector = Icons.Default.Check,
+                    contentDescription = null,
+                    tint = Color.White,
+                    modifier = Modifier.size(16.dp)
+                )
+            }
+        }
+
+        Spacer(modifier = Modifier.height(4.dp))
 
         Text(
             text = label,
             style = MaterialTheme.typography.labelSmall,
-            color = if (isActive) MaterialTheme.colorScheme.primary
-            else MaterialTheme.colorScheme.onSurfaceVariant
+            color = when {
+                isActive -> MaterialTheme.colorScheme.primary
+                isCompleted -> MaterialTheme.colorScheme.onSurface
+                else -> MaterialTheme.colorScheme.onSurfaceVariant
+            }
         )
     }
 }
+
+@Composable
+private fun StepConnector(
+    isCompleted: Boolean,
+    isActive: Boolean,
+    modifier: Modifier = Modifier
+) {
+    Box(
+        modifier = modifier
+            .height(2.dp)
+            .background(
+                when {
+                    isCompleted -> MaterialTheme.colorScheme.primary
+                    isActive -> MaterialTheme.colorScheme.primary.copy(alpha = 0.5f)
+                    else -> MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
+                }
+            )
+    )
+}
+
 
 @Composable
 private fun NameInputStep(
@@ -423,14 +472,19 @@ private fun RecordingSamplesStep(
             }
 
             if (recordings.isNotEmpty() && !isRecording) {
-                TextButton(onClick = onDeleteLast) {
+                TextButton(
+                    onClick = onDeleteLast,
+                    colors = ButtonDefaults.textButtonColors(
+                        contentColor = MaterialTheme.colorScheme.error
+                    )
+                ) {
                     Icon(
-                        imageVector = ImageVector.vectorResource(R.drawable.ic_close), // TODO: undo icon
+                        imageVector = ImageVector.vectorResource(R.drawable.ic_undo),
                         contentDescription = null,
                         modifier = Modifier.size(16.dp)
                     )
                     Spacer(Modifier.width(4.dp))
-                    Text("Undo Last")
+                    Text("Undo Last", style = MaterialTheme.typography.bodyMedium)
                 }
             }
         }
@@ -746,10 +800,6 @@ private fun PreviewAndSaveStep(
                 InfoRow(
                     label = "Samples recorded",
                     value = "$recordingCount"
-                )
-                InfoRow(
-                    label = "Detection method",
-                    value = "AI similarity matching"
                 )
             }
         }
