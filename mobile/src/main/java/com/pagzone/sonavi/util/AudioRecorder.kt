@@ -25,18 +25,23 @@ class AudioRecorder(private val context: Context) {
     private var recordingJob: Job? = null
     private var recordedData = mutableListOf<Short>()
 
-    private var recentSamples = mutableListOf<Short>()
-    private val maxRecentSamples = 160 // 10ms worth at 16kHz
+    private val recentSamples = mutableListOf<Short>()
+    private val maxRecentSamples = 160
+    private val samplesLock = Any() // Add lock object
 
     fun getCurrentAmplitude(): Float {
-        if (recentSamples.isEmpty()) return 0f
+        // Copy samples under lock to avoid concurrent modification
+        val samples = synchronized(samplesLock) {
+            recentSamples.toList()
+        }
 
-        // Calculate RMS of recent samples
+        if (samples.isEmpty()) return 0f
+
         val rms = sqrt(
-            recentSamples.map { (it / 32768.0).pow(2) }.average()
+            samples.map { (it / 32768.0).pow(2) }.average()
         ).toFloat()
 
-        return (rms * 5f).coerceIn(0f, 1f) // Scale and clamp
+        return (rms * 5f).coerceIn(0f, 1f)
     }
 
     fun startRecording(onError: (String) -> Unit = {}): Boolean {
@@ -98,10 +103,14 @@ class AudioRecorder(private val context: Context) {
                     if (readSize > 0) {
                         recordedData.addAll(buffer.take(readSize))
 
-                        // Keep recent samples for amplitude calculation
-                        recentSamples.addAll(buffer.take(readSize))
-                        if (recentSamples.size > maxRecentSamples) {
-                            recentSamples = recentSamples.takeLast(maxRecentSamples).toMutableList()
+                        // Update recent samples under lock
+                        synchronized(samplesLock) {
+                            recentSamples.addAll(buffer.take(readSize))
+                            if (recentSamples.size > maxRecentSamples) {
+                                // Keep only the most recent samples
+                                val excess = recentSamples.size - maxRecentSamples
+                                repeat(excess) { recentSamples.removeAt(0) }
+                            }
                         }
                     }
                 }
@@ -133,12 +142,16 @@ class AudioRecorder(private val context: Context) {
         audioRecord?.release()
         audioRecord = null
 
-        // Convert to float array
         val floatData = FloatArray(recordedData.size) { i ->
             recordedData[i] / 32768.0f
         }
 
-        recentSamples.clear()
+        // Clear samples under lock
+        synchronized(samplesLock) {
+            recentSamples.clear()
+        }
+
+        recordedData.clear()
         return floatData
     }
 

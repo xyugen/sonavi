@@ -98,7 +98,6 @@ fun AddSoundPage(
     var showHelpDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var currentAudioAmplitude by remember { mutableFloatStateOf(0f) }
-    var audioWaveform by remember { mutableStateOf<List<Float>>(emptyList()) }
 
     // Monitor audio amplitude during recording
     LaunchedEffect(isRecording) {
@@ -109,7 +108,6 @@ fun AddSoundPage(
             }
         } else {
             currentAudioAmplitude = 0f
-            audioWaveform = emptyList()
         }
     }
 
@@ -139,7 +137,6 @@ fun AddSoundPage(
         recordings = emptyList()
         isRecording = false
         recordingDuration = 0
-        audioWaveform = emptyList()
     }
 
     Column(
