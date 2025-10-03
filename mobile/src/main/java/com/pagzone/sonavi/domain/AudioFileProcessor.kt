@@ -9,6 +9,7 @@ import android.provider.OpenableColumns
 import android.util.Log
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import java.util.Locale
 import kotlin.math.abs
 
 class AudioFileProcessor(private val context: Context) {
@@ -19,7 +20,31 @@ class AudioFileProcessor(private val context: Context) {
         val fileName: String? = null,
         val duration: Float? = null,
         val error: String? = null
-    )
+    ) {
+        override fun equals(other: Any?): Boolean {
+            if (this === other) return true
+            if (javaClass != other?.javaClass) return false
+
+            other as ProcessingResult
+
+            if (success != other.success) return false
+            if (duration != other.duration) return false
+            if (!audioData.contentEquals(other.audioData)) return false
+            if (fileName != other.fileName) return false
+            if (error != other.error) return false
+
+            return true
+        }
+
+        override fun hashCode(): Int {
+            var result = success.hashCode()
+            result = 31 * result + (duration?.hashCode() ?: 0)
+            result = 31 * result + (audioData?.contentHashCode() ?: 0)
+            result = 31 * result + (fileName?.hashCode() ?: 0)
+            result = 31 * result + (error?.hashCode() ?: 0)
+            return result
+        }
+    }
 
     suspend fun processAudioFile(uri: Uri): ProcessingResult = withContext(Dispatchers.IO) {
         try {
@@ -41,7 +66,13 @@ class AudioFileProcessor(private val context: Context) {
             if (duration > 10f) {
                 return@withContext ProcessingResult(
                     success = false,
-                    error = "Audio file too long (max 10 seconds, got ${String.format("%.1f", duration)}s)"
+                    error = "Audio file too long (max 10 seconds, got ${
+                        String.format(
+                            Locale.getDefault(),
+                            "%.1f",
+                            duration
+                        )
+                    }s)"
                 )
             }
 
@@ -86,7 +117,8 @@ class AudioFileProcessor(private val context: Context) {
                 val channelCount = format.getInteger(MediaFormat.KEY_CHANNEL_COUNT)
 
                 // Decode audio
-                val decoder = MediaCodec.createDecoderByType(format.getString(MediaFormat.KEY_MIME)!!)
+                val decoder =
+                    MediaCodec.createDecoderByType(format.getString(MediaFormat.KEY_MIME)!!)
                 decoder.configure(format, null, null, 0)
                 decoder.start()
 
