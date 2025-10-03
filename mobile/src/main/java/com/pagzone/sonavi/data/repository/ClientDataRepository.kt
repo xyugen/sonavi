@@ -43,6 +43,7 @@ interface ClientDataRepository {
     fun setDeviceName(name: String)
     fun setNodeId(nodeId: String)
     fun toggleListening(enable: Boolean)
+    fun retryConnection()
     fun clearData()
     fun clearEvents()
 
@@ -60,7 +61,12 @@ interface ClientDataRepository {
     suspend fun handleMessage(messageEvent: MessageEvent)
     fun handleDataChange(dataEvents: DataEventBuffer)
     fun handleCapability(capabilityInfo: CapabilityInfo)
-    fun sendPrediction(label: String, confidence: Float, isCritical: Boolean, vibration: VibrationEffectDTO)
+    fun sendPrediction(
+        label: String,
+        confidence: Float,
+        isCritical: Boolean,
+        vibration: VibrationEffectDTO
+    )
 }
 
 object ClientDataRepositoryImpl : ClientDataRepository {
@@ -221,6 +227,15 @@ object ClientDataRepositoryImpl : ClientDataRepository {
         } ?: Log.e(TAG, "Node ID is null, cannot stop listening")
     }
 
+    override fun retryConnection() {
+        try {
+            destroyListeners()
+            initializeListeners()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to retry connection: ${e.message}")
+        }
+    }
+
     override suspend fun handleChannelOpened(channel: ChannelClient.Channel) {
         when (channel.path) {
             MIC_AUDIO_PATH -> {
@@ -281,7 +296,12 @@ object ClientDataRepositoryImpl : ClientDataRepository {
         }
     }
 
-    override fun sendPrediction(label: String, confidence: Float, isCritical: Boolean, vibration: VibrationEffectDTO) {
+    override fun sendPrediction(
+        label: String,
+        confidence: Float,
+        isCritical: Boolean,
+        vibration: VibrationEffectDTO
+    ) {
         Log.d(TAG, "Sending prediction: $label")
 
         val data = SoundPredictionDTO(label, confidence, isCritical, vibration)

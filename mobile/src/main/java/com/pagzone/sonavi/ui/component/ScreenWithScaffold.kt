@@ -1,6 +1,7 @@
 package com.pagzone.sonavi.ui.component
 
 import androidx.compose.foundation.background
+import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -17,7 +18,6 @@ import androidx.navigation.NavHostController
 import androidx.navigation.compose.currentBackStackEntryAsState
 import com.pagzone.sonavi.ui.navigation.NavRoute
 import com.pagzone.sonavi.viewmodel.ClientDataViewModel
-import kotlin.collections.contains
 
 @Composable
 fun ScreenWithScaffold(
@@ -28,7 +28,7 @@ fun ScreenWithScaffold(
     content: @Composable (Modifier) -> Unit
 ) {
     val gradient = Brush.verticalGradient(
-        colors = listOf(MaterialTheme.colorScheme.secondary, Color.Transparent)
+        colors = listOf(MaterialTheme.colorScheme.surfaceVariant.copy(0.5f), Color.Transparent)
     )
 
     val isListening by clientDataViewModel.isListening.collectAsState()
@@ -38,17 +38,12 @@ fun ScreenWithScaffold(
     val currentRoute = navBackStackEntry?.destination?.route
     val currentTitle = NavRoute.fromRoute(currentRoute)?.label ?: ""
 
-    val showBars = currentRoute in listOf(
-        NavRoute.Home.route,
-        NavRoute.AddSound.route,
-        NavRoute.Library.route
-    )
+    val showBars = currentRoute in NavRoute.bottomNavItems.map { it.route }
 
     Scaffold(
         containerColor = Color.Transparent,
         topBar = {
             if (showBars) TopAppBar(
-                navController = navController,
                 title = currentTitle,
                 isListenModeChecked = isListening,
                 isListenModeEnabled = isConnected,
@@ -62,7 +57,13 @@ fun ScreenWithScaffold(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .background(brush = gradient)
+                .then(
+                    if (isSystemInDarkTheme()) {
+                        Modifier.background(MaterialTheme.colorScheme.background)
+                    } else {
+                        Modifier.background(gradient)
+                    }
+                )
                 .padding(innerPadding)
         ) {
             content(Modifier.padding(horizontal = 21.dp))

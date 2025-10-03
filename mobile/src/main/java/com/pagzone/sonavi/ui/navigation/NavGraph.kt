@@ -1,7 +1,5 @@
 package com.pagzone.sonavi.ui.navigation
 
-import androidx.compose.animation.AnimatedContentTransitionScope
-import androidx.compose.animation.core.tween
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.viewmodel.compose.viewModel
@@ -33,21 +31,9 @@ fun AppNavHost(
             LibraryPage(modifier)
         }
 
-        // Not in bottom navigation
         composable(
-            NavRoute.Profile.route,
-            enterTransition = {
-                slideIntoContainer(
-                    AnimatedContentTransitionScope.SlideDirection.Up,
-                    animationSpec = tween(500)
-                )
-            },
-            popExitTransition = {
-                slideOutOfContainer(
-                    AnimatedContentTransitionScope.SlideDirection.Down,
-                    animationSpec = tween(500)
-                )
-            }) {
+            NavRoute.Profile.route
+        ) {
             ProfilePage(navController, modifier)
         }
     }

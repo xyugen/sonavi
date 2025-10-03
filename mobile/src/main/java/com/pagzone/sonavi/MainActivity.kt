@@ -1,6 +1,7 @@
 package com.pagzone.sonavi
 
 import android.Manifest
+import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
 import android.content.pm.PackageManager
@@ -12,13 +13,18 @@ import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
 import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
+import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.graphics.luminance
+import androidx.compose.ui.platform.LocalView
 import androidx.core.content.ContextCompat
 import androidx.core.content.edit
+import androidx.core.view.WindowCompat
 import androidx.datastore.core.DataStore
 import androidx.datastore.preferences.core.Preferences
 import androidx.datastore.preferences.preferencesDataStore
@@ -47,6 +53,7 @@ class MainActivity : ComponentActivity() {
 
     @Inject
     lateinit var emergencyRepository: EmergencyContactRepository
+
     @Inject
     lateinit var soundRepository: SoundRepository
 
@@ -74,12 +81,28 @@ class MainActivity : ComponentActivity() {
 
         // TODO: move to onboarding page
         if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-            != PackageManager.PERMISSION_GRANTED) {
+            != PackageManager.PERMISSION_GRANTED
+        ) {
             audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
         }
 
         setContent {
             SonaviTheme {
+                val colorScheme = MaterialTheme.colorScheme
+                val view = LocalView.current
+
+                if (!view.isInEditMode) {
+                    SideEffect {
+                        val window = (view.context as Activity).window
+                        val insetsController = WindowCompat.getInsetsController(window, view)
+
+                        // Set based on your background color
+                        val isLightTheme = colorScheme.surface.luminance() > 0.5
+                        insetsController.isAppearanceLightStatusBars = isLightTheme
+                        insetsController.isAppearanceLightNavigationBars = isLightTheme
+                    }
+                }
+
                 val navController = rememberNavController()
                 LaunchedEffect(Unit) {
                     NavigationManager.setNavController(navController)

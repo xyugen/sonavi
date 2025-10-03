@@ -51,6 +51,12 @@ class ClientDataViewModel(
         }
     }
 
+    fun retryConnection() {
+        viewModelScope.launch {
+            repository.retryConnection()
+        }
+    }
+
     fun toggleListening(enable: Boolean) = repository.toggleListening(enable)
 
     fun sendPrediction(label: String, confidence: Float, isCritical: Boolean, vibration: VibrationEffectDTO) {

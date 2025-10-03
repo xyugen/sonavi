@@ -81,7 +81,6 @@ import androidx.navigation.NavHostController
 import com.pagzone.sonavi.R
 import com.pagzone.sonavi.model.EmergencyContact
 import com.pagzone.sonavi.ui.component.CustomMenuItem
-import com.pagzone.sonavi.ui.navigation.NavRoute
 import com.pagzone.sonavi.viewmodel.EmergencyContactViewModel
 import com.pagzone.sonavi.viewmodel.ProfileSettingsViewModel
 
