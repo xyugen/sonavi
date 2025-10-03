@@ -1,12 +1,17 @@
 package com.pagzone.sonavi.viewmodel
 
 import android.content.Context
+import android.net.Uri
 import android.util.Log
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.google.gson.Gson
 import com.pagzone.sonavi.data.repository.SoundRepository
+import com.pagzone.sonavi.domain.AudioFileProcessor
+import com.pagzone.sonavi.domain.AudioQualityAnalyzer
 import com.pagzone.sonavi.domain.SoundEmbeddingModel
+import com.pagzone.sonavi.model.AudioSample
+import com.pagzone.sonavi.model.AudioSource
 import com.pagzone.sonavi.model.SoundProfile
 import com.pagzone.sonavi.model.UiState
 import com.pagzone.sonavi.util.Helper.Companion.averageEmbeddings
@@ -14,6 +19,7 @@ import com.pagzone.sonavi.util.Helper.Companion.calculateEmbeddingQuality
 import com.pagzone.sonavi.util.Helper.Companion.normalizeEmbedding
 import dagger.hilt.android.lifecycle.HiltViewModel
 import dagger.hilt.android.qualifiers.ApplicationContext
+import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.Flow
@@ -22,6 +28,8 @@ import kotlinx.coroutines.flow.SharingStarted
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.filter
+import kotlinx.coroutines.flow.flow
+import kotlinx.coroutines.flow.flowOn
 import kotlinx.coroutines.flow.map
 import kotlinx.coroutines.flow.stateIn
 import kotlinx.coroutines.flow.take
@@ -39,6 +47,19 @@ class SoundViewModel @Inject constructor(
 
     private val _uiState = MutableStateFlow(UiState())
     val uiState: StateFlow<UiState> = _uiState.asStateFlow()
+
+    private val audioFileProcessor = AudioFileProcessor(appContext)
+    private val audioQualityAnalyzer = AudioQualityAnalyzer()
+
+    private val _processingState = MutableStateFlow<ProcessingState>(ProcessingState.Idle)
+    val processingState = _processingState.asStateFlow()
+
+    sealed class ProcessingState {
+        object Idle : ProcessingState()
+        object Processing : ProcessingState()
+        data class Success(val sample: AudioSample) : ProcessingState()
+        data class Error(val message: String) : ProcessingState()
+    }
 
     val sounds = repository
         .getAllSounds()
@@ -71,6 +92,30 @@ class SoundViewModel @Inject constructor(
                 }
         }
     }
+
+    fun processAudioFile(uri: Uri): Flow<ProcessingState> = flow {
+        emit(ProcessingState.Processing)
+
+        val result = audioFileProcessor.processAudioFile(uri)
+
+        if (result.success && result.audioData != null) {
+            val quality = audioQualityAnalyzer.analyzeQuality(result.audioData)
+
+            val sample = AudioSample(
+                source = AudioSource.Upload(
+                    uri = uri,
+                    data = result.audioData,
+                    fileName = result.fileName ?: "unknown",
+                    duration = result.duration ?: 0f
+                ),
+                quality = quality
+            )
+
+            emit(ProcessingState.Success(sample))
+        } else {
+            emit(ProcessingState.Error(result.error ?: "Unknown error"))
+        }
+    }.flowOn(Dispatchers.IO)
 
     fun getAllSounds(): Flow<List<SoundProfile>> {
         return repository.getAllSounds()
@@ -261,6 +306,62 @@ class SoundViewModel @Inject constructor(
                 // Handle error (show to user)
             } finally {
                 embeddingModel.cleanup()
+            }
+        }
+    }
+
+    fun createCustomSound(
+        name: String,
+        samples: List<AudioSample>
+    ) {
+        viewModelScope.launch {
+            try {
+                val embeddingModel = SoundEmbeddingModel(appContext)
+
+                // Extract audio data from samples
+                val audioData = samples.map { sample ->
+                    when (val source = sample.source) {
+                        is AudioSource.Recording -> source.data
+                        is AudioSource.Upload -> source.data
+                    }
+                }
+
+                // Extract embeddings
+                val embeddings = audioData.map { audio ->
+                    embeddingModel.extractEmbeddingFromLongAudio(audio)
+                }
+
+                // Average to create prototype
+                val prototypeEmbedding = averageEmbeddings(embeddings)
+                val normalizedEmbedding = normalizeEmbedding(prototypeEmbedding)
+
+                // Calculate quality metrics
+                val quality = calculateEmbeddingQuality(embeddings)
+                Log.d("ViewModel", "Embedding consistency: ${quality.second}")
+
+                // Store as JSON
+                val embeddingJson = Gson().toJson(normalizedEmbedding)
+
+                // Determine threshold based on consistency
+                val threshold = when {
+                    quality.second > 0.80f -> 0.80f // Good consistency
+                    quality.second > 0.70f -> 0.75f // Fair consistency -> lenient
+                    else -> 0.70f // Poor consistency -> very lenient
+                }
+
+                val customSound = SoundProfile(
+                    name = name,
+                    displayName = name,
+                    isBuiltIn = false,
+                    mfccEmbedding = embeddingJson,
+                    threshold = threshold
+                )
+
+                repository.addCustomSound(customSound)
+                embeddingModel.cleanup()
+
+            } catch (e: Exception) {
+                Log.e("ViewModel", "Error creating custom sound", e)
             }
         }
     }
