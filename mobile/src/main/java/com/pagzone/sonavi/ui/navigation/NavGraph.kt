@@ -34,7 +34,7 @@ fun AppNavHost(
         composable(
             NavRoute.Profile.route
         ) {
-            ProfilePage(navController, modifier)
+            ProfilePage(modifier)
         }
     }
 }

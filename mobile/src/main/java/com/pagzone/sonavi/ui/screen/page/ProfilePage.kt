@@ -31,7 +31,6 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
-import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
 import androidx.compose.foundation.shape.CircleShape
@@ -77,7 +76,6 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.core.content.ContextCompat
 import androidx.hilt.navigation.compose.hiltViewModel
-import androidx.navigation.NavHostController
 import com.pagzone.sonavi.R
 import com.pagzone.sonavi.model.EmergencyContact
 import com.pagzone.sonavi.ui.component.CustomMenuItem
@@ -119,7 +117,6 @@ fun Context.getContactInfo(uri: Uri): EmergencyContact? {
 
 @Composable
 fun ProfilePage(
-    navController: NavHostController,
     modifier: Modifier = Modifier,
     viewModel: EmergencyContactViewModel = hiltViewModel()
 ) {
@@ -133,12 +130,8 @@ fun ProfilePage(
     Column(
         modifier = modifier
             .fillMaxSize()
-            .padding(vertical = 16.dp)
+            .padding(top = 12.dp)
     ) {
-        TopBar("Profile", navController)
-
-        Spacer(modifier = Modifier.height(24.dp))
-
         ProfileCard()
 
         Spacer(modifier = Modifier.height(12.dp))
@@ -153,7 +146,7 @@ fun ProfilePage(
                 Text(
                     text = "Emergency Contacts",
                     style = MaterialTheme.typography.headlineSmall,
-                    fontWeight = FontWeight.Bold,
+                    fontWeight = FontWeight.SemiBold,
                     color = MaterialTheme.colorScheme.onSurface
                 )
 
@@ -398,7 +391,7 @@ fun EmergencyContactCard(
                     Text(
                         text = contact.name,
                         style = MaterialTheme.typography.titleMedium,
-                        fontWeight = FontWeight.SemiBold,
+                        fontWeight = FontWeight.Medium,
                         color = if (contact.isActive) {
                             MaterialTheme.colorScheme.onSurface
                         } else {
@@ -764,31 +757,4 @@ fun EditProfileDialog(
         containerColor = MaterialTheme.colorScheme.surface,
         tonalElevation = 6.dp
     )
-}
-
-@Composable
-fun TopBar(title: String, navController: NavHostController, modifier: Modifier = Modifier) {
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.Start
-    ) {
-        Row(verticalAlignment = Alignment.CenterVertically) {
-            IconButton(
-                onClick = { navController.popBackStack() },
-                modifier = Modifier.size(48.dp),
-                colors = IconButtonDefaults.iconButtonColors(
-                    containerColor = MaterialTheme.colorScheme.primary,
-                    contentColor = MaterialTheme.colorScheme.onPrimary
-                )
-            ) {
-                Icon(
-                    modifier = Modifier.size(28.dp),
-                    imageVector = ImageVector.vectorResource(R.drawable.ic_chevron_left),
-                    contentDescription = "Back",
-                )
-            }
-            Spacer(modifier = Modifier.width(10.dp))
-            Text(title, style = MaterialTheme.typography.titleLarge)
-        }
-    }
 }

@@ -29,7 +29,8 @@ fun TopAppBar(
         modifier = modifier
             .fillMaxWidth()
             .padding(WindowInsets.statusBars.asPaddingValues())
-            .padding(horizontal = 21.dp, vertical = 16.dp)
+            .padding(horizontal = 21.dp)
+            .padding(bottom = 14.dp)
     ) {
         Box(
             modifier = Modifier.fillMaxWidth()
@@ -49,7 +50,7 @@ fun TopAppBar(
             )
         }
 
-        Spacer(modifier = Modifier.height(12.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         ListenModeToggle(
             checked = isListenModeChecked,
