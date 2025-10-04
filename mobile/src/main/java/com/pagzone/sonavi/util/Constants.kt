@@ -23,6 +23,7 @@ class Constants {
         // PROFILE
         const val PROFILE_NAME = "profile_name"
         const val PROFILE_ADDRESS = "profile_address"
+        const val PROFILE_LOCATION = "profile_location"
         const val PROFILE_SETTINGS = "profile_settings"
     }
     object RoomKeys {

@@ -293,6 +293,7 @@ private fun PermissionsStep(onNext: () -> Unit) {
         )
     }
     var smsGranted by remember { mutableStateOf(PermissionManager.hasSmsPermission(context)) }
+    var locationGranted by remember { mutableStateOf(PermissionManager.hasLocationPermission(context)) }
 
     DisposableEffect(lifecycleOwner) {
         val observer = LifecycleEventObserver { _, event ->
@@ -302,6 +303,7 @@ private fun PermissionsStep(onNext: () -> Unit) {
                 contactsGranted = PermissionManager.hasContactsPermission(context)
                 recordAudioGranted = PermissionManager.hasRecordAudioPermission(context)
                 smsGranted = PermissionManager.hasSmsPermission(context)
+                locationGranted = PermissionManager.hasLocationPermission(context)
             }
         }
         lifecycleOwner.lifecycle.addObserver(observer)
@@ -418,6 +420,19 @@ private fun PermissionsStep(onNext: () -> Unit) {
                 onRequest = {
                     PermissionManager.requestSmsPermission(activity) { granted ->
                         smsGranted = granted
+                    }
+                }
+            )
+
+            PermissionCard(
+                icon = R.drawable.ic_map_pin,
+                title = "Location",
+                description = "Send current location to emergency contacts",
+                isGranted = locationGranted,
+                isRequired = false,
+                onRequest = {
+                    PermissionManager.requestLocationPermission(activity) { granted ->
+                        locationGranted = granted
                     }
                 }
             )

@@ -11,10 +11,13 @@ import com.pagzone.sonavi.data.repository.SoundRepository
 import com.pagzone.sonavi.model.ProfileSettings
 import com.pagzone.sonavi.model.SoundProfile
 import com.pagzone.sonavi.service.SmsService
+import com.pagzone.sonavi.util.LocationHelper
 import kotlinx.coroutines.flow.first
+import kotlinx.coroutines.suspendCancellableCoroutine
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
+import kotlin.coroutines.resume
 
 object EmergencyHandler {
     private lateinit var appContext: Context
@@ -54,8 +57,26 @@ object EmergencyHandler {
         // Send emergency SMS
         try {
             val contacts = emergencyContactRepository.getActiveEmergencyContacts()
-            Log.d("EmergencyHandler", "Contacts: $contacts")
-            val message = generateMessage(sound, confidence, profile)
+            val locationHelper = LocationHelper(appContext)
+
+            val message =
+                if (profile.hasCurrentLocation && locationHelper.isLocationEnabled(appContext)) {
+                    var locationText = ""
+
+                    // Get location synchronously (wrapped in coroutine)
+                    suspendCancellableCoroutine { continuation ->
+                        locationHelper.getCurrentLocation { lat, lng ->
+                            locationText = "\nLocation: https://maps.google.com/?q=$lat,$lng"
+                            continuation.resume(Unit)
+                        }
+                    }
+
+                    Log.d("EmergencyHandler", "Location: $locationText")
+
+                    generateMessage(sound, confidence, profile) + locationText
+                } else {
+                    generateMessage(sound, confidence, profile)
+                }
 
             contacts.forEach { contact ->
                 SmsService.sendEmergencySms(contact.number, message)
@@ -94,8 +115,13 @@ object EmergencyHandler {
         confidence: Float,
         profile: ProfileSettings
     ): String {
-        val hasAddress = profile.address.isNotEmpty()
         val timeStr = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-        return "🚨 ALERT\n${sound.displayName} detected at $timeStr with ${(confidence * 100).toInt()}% confidence.\n\nSent with Sonavi from ${profile.name}${if (hasAddress) " - ${profile.address}" else ""}"
+        val confidencePercent = (confidence * 100).toInt()
+        val location = if (profile.address.isNotEmpty()) " at ${profile.address}" else ""
+
+        return "🚨 EMERGENCY ALERT\n" +
+                "${sound.displayName} detected at $timeStr ($confidencePercent% confidence)\n\n" +
+                "From: ${profile.name}$location\n" +
+                "Sent via Sonavi"
     }
 }

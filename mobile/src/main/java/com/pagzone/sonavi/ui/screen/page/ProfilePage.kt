@@ -5,6 +5,7 @@ import android.content.Context
 import android.content.pm.PackageManager
 import android.net.Uri
 import android.provider.ContactsContract
+import android.util.Log
 import android.widget.Toast
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
@@ -33,6 +34,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.selection.toggleable
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -51,6 +53,8 @@ import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Surface
+import androidx.compose.material3.Switch
+import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.runtime.Composable
@@ -70,6 +74,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
@@ -79,6 +84,7 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.pagzone.sonavi.R
 import com.pagzone.sonavi.model.EmergencyContact
 import com.pagzone.sonavi.ui.component.CustomMenuItem
+import com.pagzone.sonavi.ui.theme.Lime50
 import com.pagzone.sonavi.viewmodel.EmergencyContactViewModel
 import com.pagzone.sonavi.viewmodel.ProfileSettingsViewModel
 
@@ -498,87 +504,155 @@ fun ProfileCard(
     val uiState by profileViewModel.uiState.collectAsState()
 
     var showEditDialog by remember { mutableStateOf(false) }
+    val sendLocation = profileSettings.hasCurrentLocation
 
     // Handle error states
     LaunchedEffect(uiState.error) {
         uiState.error?.let { error ->
-            // Show snackbar or toast
             println("Profile error: $error")
         }
     }
 
     Box(
-        modifier = modifier
-            .fillMaxWidth()
+        modifier = modifier.fillMaxWidth()
     ) {
-        Card(
-            modifier = modifier.fillMaxWidth(),
-            colors = CardDefaults.cardColors(
-                containerColor = MaterialTheme.colorScheme.primary,
-                contentColor = MaterialTheme.colorScheme.onPrimary,
-            ),
-            elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
-            shape = RoundedCornerShape(16.dp)
+        Column(
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            Row(
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .padding(20.dp),
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            // Profile Info Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.primary,
+                    contentColor = MaterialTheme.colorScheme.onPrimary,
+                ),
+                elevation = CardDefaults.cardElevation(defaultElevation = 4.dp),
+                shape = RoundedCornerShape(16.dp)
             ) {
-                // Avatar
-                Box(
+                Row(
                     modifier = Modifier
-                        .size(56.dp)
-                        .background(
-                            color = Color.White.copy(alpha = 0.2f),
-                            shape = CircleShape
-                        ),
-                    contentAlignment = Alignment.Center
+                        .fillMaxWidth()
+                        .padding(20.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
-                    val initials = if (profileSettings.name.isNotEmpty()) {
-                        profileSettings.name.split(" ")
-                            .map { it.first().uppercaseChar() }
-                            .joinToString("")
-                            .take(2)
-                    } else "?"
+                    // Avatar
+                    Box(
+                        modifier = Modifier
+                            .size(56.dp)
+                            .background(
+                                color = Color.White.copy(alpha = 0.2f),
+                                shape = CircleShape
+                            ),
+                        contentAlignment = Alignment.Center
+                    ) {
+                        val initials = if (profileSettings.name.isNotEmpty()) {
+                            profileSettings.name.split(" ")
+                                .map { it.first().uppercaseChar() }
+                                .joinToString("")
+                                .take(2)
+                        } else "?"
 
-                    Text(
-                        text = initials,
-                        style = MaterialTheme.typography.titleLarge,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
-                    )
+                        Text(
+                            text = initials,
+                            style = MaterialTheme.typography.titleLarge,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                    }
+
+                    // User Info
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(4.dp)
+                    ) {
+                        Text(
+                            text = profileSettings.name.ifEmpty { "No name set" },
+                            style = MaterialTheme.typography.titleMedium,
+                            color = Color.White,
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = profileSettings.address.ifEmpty { "No address set" },
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = Color.White.copy(alpha = 0.8f),
+                            maxLines = 2,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
                 }
+            }
 
-                // User Info
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(4.dp)
+            // Location Toggle Card
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (sendLocation)
+                        MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
+                    else
+                        MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+                ),
+                shape = RoundedCornerShape(12.dp)
+            ) {
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .toggleable(
+                            value = sendLocation,
+                            onValueChange = {
+                                profileViewModel.updateHasCurrentLocation(it)
+                            },
+                            role = Role.Checkbox
+                        )
+                        .padding(16.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
-                    Text(
-                        text = profileSettings.name.ifEmpty { "No name set" },
-                        style = MaterialTheme.typography.titleMedium,
-                        color = Color.White,
-                        fontWeight = FontWeight.Bold
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.ic_map_pin),
+                        contentDescription = null,
+                        tint = if (sendLocation)
+                            MaterialTheme.colorScheme.primary
+                        else
+                            MaterialTheme.colorScheme.onSurfaceVariant,
+                        modifier = Modifier.size(24.dp)
                     )
-                    Text(
-                        text = profileSettings.address.ifEmpty { "No address set" },
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = Color.White.copy(alpha = 0.8f),
-                        maxLines = 1,
-                        overflow = TextOverflow.Ellipsis
+
+                    Column(
+                        modifier = Modifier.weight(1f),
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = "Include Current Location",
+                            style = MaterialTheme.typography.bodyLarge.copy(
+                                fontWeight = FontWeight.Medium
+                            ),
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                        Text(
+                            text = "Send GPS coordinates with emergency alerts",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+
+                    Switch(
+                        checked = sendLocation,
+                        onCheckedChange = null, // null because parent handles it
+                        colors = SwitchDefaults.colors(
+                            checkedThumbColor = Color.White,
+                            checkedTrackColor = MaterialTheme.colorScheme.primary,
+                            uncheckedThumbColor = Color.White,
+                            uncheckedTrackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                        )
                     )
                 }
             }
         }
 
-
         // Overlapping Edit Button
         IconButton(
-            onClick = {
-                showEditDialog = true
-            },
+            onClick = { showEditDialog = true },
             modifier = Modifier
                 .align(Alignment.TopEnd)
                 .offset(x = (-5).dp, y = (-15).dp)
@@ -603,7 +677,7 @@ fun ProfileCard(
             } else {
                 Icon(
                     modifier = Modifier.size(20.dp),
-                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_edit),
+                    imageVector = ImageVector.vectorResource(R.drawable.ic_edit),
                     contentDescription = "Edit"
                 )
             }
@@ -619,17 +693,20 @@ fun ProfileCard(
             Surface(
                 modifier = Modifier.size(42.dp),
                 shape = CircleShape,
-                color = Color.Green,
+                color = Lime50,
                 shadowElevation = 4.dp
             ) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(id = R.drawable.ic_check),
-                    contentDescription = "Success",
-                    modifier = Modifier
-                        .size(20.dp)
-                        .padding(11.dp),
-                    tint = Color.White
-                )
+                Box(
+                    contentAlignment = Alignment.Center,
+                    modifier = Modifier.fillMaxSize()
+                ) {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.ic_check),
+                        contentDescription = "Success",
+                        modifier = Modifier.size(20.dp),
+                        tint = Color.White
+                    )
+                }
             }
         }
 
@@ -646,21 +723,6 @@ fun ProfileCard(
                 }
             )
         }
-    }
-
-
-    // Edit Profile Dialog
-    if (showEditDialog) {
-        EditProfileDialog(
-            currentName = profileSettings.name,
-            currentAddress = profileSettings.address,
-            isLoading = uiState.isLoading,
-            onDismiss = { showEditDialog = false },
-            onConfirm = { newName, newAddress ->
-                profileViewModel.updateProfile(newName, newAddress)
-                showEditDialog = false
-            }
-        )
     }
 }
 

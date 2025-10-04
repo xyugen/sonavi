@@ -52,4 +52,27 @@ class ProfileSettingsViewModel @Inject constructor(
                 }
         }
     }
+
+    fun updateHasCurrentLocation(hasCurrentLocation: Boolean) {
+        viewModelScope.launch {
+            _uiState.value = _uiState.value.copy(isLoading = true, error = null)
+
+            profileSettingsRepository.updateHasCurrentLocation(hasCurrentLocation)
+                .onSuccess {
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        isSuccess = true
+                    )
+                    // Clear success state after delay
+                    delay(2000)
+                    _uiState.value = _uiState.value.copy(isSuccess = false)
+                }
+                .onFailure { exception ->
+                    _uiState.value = _uiState.value.copy(
+                        isLoading = false,
+                        error = exception.message ?: "Failed to update has current location"
+                    )
+                }
+        }
+    }
 }

@@ -10,7 +10,10 @@ class ProfileSettingsRepository @Inject constructor(
 ) {
     fun getProfileSettings(): Flow<ProfileSettings> = profileSettingsDataStore.profileFlow
 
-    suspend fun updateProfile(name: String, address: String?): Result<Unit> {
+    suspend fun updateProfile(
+        name: String,
+        address: String?
+    ): Result<Unit> {
         return try {
             profileSettingsDataStore.updateProfile(name.trim(), address?.trim())
             Result.success(Unit)
@@ -31,6 +34,15 @@ class ProfileSettingsRepository @Inject constructor(
     suspend fun updateAddress(address: String): Result<Unit> {
         return try {
             profileSettingsDataStore.updateAddress(address.trim())
+            Result.success(Unit)
+        } catch (e: Exception) {
+            Result.failure(e)
+        }
+    }
+
+    suspend fun updateHasCurrentLocation(hasCurrentLocation: Boolean): Result<Unit> {
+        return try {
+            profileSettingsDataStore.updateHasCurrentLocation(hasCurrentLocation)
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

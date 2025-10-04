@@ -1,30 +1,21 @@
 package com.pagzone.sonavi.domain
 
 import android.Manifest
-import android.app.AlertDialog
 import android.content.Context
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.ComponentActivity
 import androidx.activity.result.ActivityResultLauncher
 import androidx.activity.result.contract.ActivityResultContracts
-import androidx.core.app.ActivityCompat
 import androidx.core.content.ContextCompat
-import androidx.core.content.edit
 
 object PermissionManager {
-    private const val SMS_PERMISSION_REQUEST_CODE = 1001
-    private const val NOTIFICATION_PERMISSION_REQUEST_CODE = 1002
-    private const val READ_MEDIA_PERMISSION_REQUEST_CODE = 1003
-    private const val READ_CONTACTS_PERMISSION_REQUEST_CODE = 1004
-    private const val RECORD_AUDIO_PERMISSION_REQUEST_CODE = 1005
-    private const val PREF_SMS_PERMISSION_EXPLAINED = "sms_permission_explained"
-
     private var notificationLauncher: ActivityResultLauncher<String>? = null
     private var audioLauncher: ActivityResultLauncher<String>? = null
     private var contactsLauncher: ActivityResultLauncher<String>? = null
     private var recordAudioLauncher: ActivityResultLauncher<String>? = null
     private var smsLauncher: ActivityResultLauncher<String>? = null
+    private var locationLauncher: ActivityResultLauncher<Array<String>>? = null
 
     fun initializeLaunchers(activity: ComponentActivity) {
         notificationLauncher = activity.registerForActivityResult(
@@ -56,6 +47,14 @@ object PermissionManager {
         ) { isGranted ->
             smsCallback?.invoke(isGranted)
         }
+
+        locationLauncher = activity.registerForActivityResult(
+            ActivityResultContracts.RequestMultiplePermissions()
+        ) { permissions ->
+            val isGranted = permissions[Manifest.permission.ACCESS_FINE_LOCATION] == true ||
+                    permissions[Manifest.permission.ACCESS_COARSE_LOCATION] == true
+            locationCallback?.invoke(isGranted)
+        }
     }
 
     private var notificationCallback: ((Boolean) -> Unit)? = null
@@ -63,6 +62,7 @@ object PermissionManager {
     private var contactsCallback: ((Boolean) -> Unit)? = null
     private var recordAudioCallback: ((Boolean) -> Unit)? = null
     private var smsCallback: ((Boolean) -> Unit)? = null
+    private var locationCallback: ((Boolean) -> Unit)? = null
 
     fun hasNotificationPermission(context: Context): Boolean {
         return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -108,48 +108,14 @@ object PermissionManager {
         ) == PackageManager.PERMISSION_GRANTED
     }
 
-    private fun shouldShowEducationalDialog(activity: ComponentActivity): Boolean {
-        val prefs = activity.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-        return !prefs.getBoolean(PREF_SMS_PERMISSION_EXPLAINED, false) &&
-                ActivityCompat.shouldShowRequestPermissionRationale(
-                    activity,
-                    Manifest.permission.SEND_SMS
-                )
-    }
-
-    private fun showSmsPermissionEducationalDialog(activity: ComponentActivity) {
-        AlertDialog.Builder(activity)
-            .setTitle("Emergency SMS Feature")
-            .setMessage(
-                "SoundGuard can send emergency SMS messages when critical sounds are detected.\n\n" +
-                        "This helps alert your emergency contacts when you might not be able to respond, " +
-                        "such as during medical emergencies or safety incidents.\n\n" +
-                        "Your SMS permission will only be used for emergency alerts you configure."
-            )
-            .setPositiveButton("Grant Permission") { _, _ ->
-                markPermissionExplained(activity)
-                requestSmsPermission(activity)
-            }
-            .setNegativeButton("Not Now") { _, _ ->
-                markPermissionExplained(activity)
-            }
-            .setCancelable(false)
-            .show()
-    }
-
-    private fun requestSmsPermission(activity: ComponentActivity) {
-        ActivityCompat.requestPermissions(
-            activity,
-            arrayOf(Manifest.permission.SEND_SMS),
-            SMS_PERMISSION_REQUEST_CODE
-        )
-    }
-
-    private fun markPermissionExplained(activity: ComponentActivity) {
-        activity.getSharedPreferences("app_prefs", Context.MODE_PRIVATE)
-            .edit {
-                putBoolean(PREF_SMS_PERMISSION_EXPLAINED, true)
-            }
+    fun hasLocationPermission(context: Context): Boolean {
+        return ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_FINE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED || ContextCompat.checkSelfPermission(
+            context,
+            Manifest.permission.ACCESS_COARSE_LOCATION
+        ) == PackageManager.PERMISSION_GRANTED
     }
 
     fun requestNotificationPermission(activity: ComponentActivity, onResult: (Boolean) -> Unit) {
@@ -183,5 +149,15 @@ object PermissionManager {
     fun requestSmsPermission(activity: ComponentActivity, onResult: (Boolean) -> Unit) {
         smsCallback = onResult
         smsLauncher?.launch(Manifest.permission.SEND_SMS)
+    }
+
+    fun requestLocationPermission(activity: ComponentActivity, onResult: (Boolean) -> Unit) {
+        locationCallback = onResult
+        locationLauncher?.launch(
+            arrayOf(
+                Manifest.permission.ACCESS_FINE_LOCATION,
+                Manifest.permission.ACCESS_COARSE_LOCATION
+            )
+        )
     }
 }
