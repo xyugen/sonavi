@@ -53,4 +53,15 @@ val Red30 = Color(0xFFffa2a2)
 val Red20 = Color(0xFFFFDAD6)
 val Red10 = Color(0xFFffe2e2)
 
+val Cyan50 = Color(0xFF00b8db)
+
+val Rose50 = Color(0xFFff2056)
+
+val Fuchsia50 = Color(0xFFe12afb)
+
+val Amber50 = Color(0xFFfe9a00)
+
+val Lime50 = Color(0xFF7ccf00)
+val Lime20 = Color(0xFFd8f999)
+
 val White = Color(0xFFFFFFFF)

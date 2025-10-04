@@ -1,7 +1,14 @@
 package com.pagzone.sonavi.ui.component
 
+import androidx.compose.animation.core.LinearEasing
+import androidx.compose.animation.core.RepeatMode
+import androidx.compose.animation.core.animateFloat
+import androidx.compose.animation.core.infiniteRepeatable
+import androidx.compose.animation.core.rememberInfiniteTransition
+import androidx.compose.animation.core.tween
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.fillMaxWidth
@@ -15,16 +22,28 @@ import androidx.compose.material3.Switch
 import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.CornerRadius
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.Stroke
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import com.pagzone.sonavi.R
+import com.pagzone.sonavi.ui.theme.Amber50
+import com.pagzone.sonavi.ui.theme.Cyan50
+import com.pagzone.sonavi.ui.theme.Fuchsia50
+import com.pagzone.sonavi.ui.theme.Lime50
+import com.pagzone.sonavi.ui.theme.Rose50
+import com.pagzone.sonavi.ui.theme.Sky50
 
 @Preview
 @Composable
@@ -34,6 +53,17 @@ fun ListenModeToggle(
     enabled: Boolean = false,
     onChange: (Boolean) -> Unit = {}
 ) {
+    val infiniteTransition = rememberInfiniteTransition(label = "border animation")
+    val animatedOffset by infiniteTransition.animateFloat(
+        initialValue = 0f,
+        targetValue = 1f,
+        animationSpec = infiniteRepeatable(
+            animation = tween(5000, easing = LinearEasing),
+            repeatMode = RepeatMode.Restart
+        ),
+        label = "offset"
+    )
+
     val backgroundColor = if (checked && enabled) {
         MaterialTheme.colorScheme.primary
     } else if (enabled) {
@@ -48,66 +78,106 @@ fun ListenModeToggle(
         MaterialTheme.colorScheme.onPrimaryContainer
     }
 
-    Surface(
-        shape = RoundedCornerShape(16.dp),
-        color = backgroundColor,
-        tonalElevation = 0.dp,
+    Box(
         modifier = modifier
             .fillMaxWidth()
-            .clip(RoundedCornerShape(16.dp))
-            .clickable(enabled = enabled) { onChange(!checked) },
-        contentColor = contentColor
+            .then(
+                if (checked && enabled) {
+                    Modifier.drawBehind {
+                        val colors = listOf(
+                            Sky50,
+                            Fuchsia50,
+                            Rose50,
+                            Amber50,
+                            Lime50,
+                            Cyan50
+                        )
+
+                        val shiftedColors = List(colors.size) { index ->
+                            val shiftedIndex =
+                                ((index + animatedOffset * colors.size).toInt()) % colors.size
+                            colors[shiftedIndex]
+                        }
+
+                        val brush = Brush.sweepGradient(
+                            colors = shiftedColors,
+                            center = Offset(size.width / 2, size.height / 2)
+                        )
+
+                        drawRoundRect(
+                            brush = brush,
+                            size = size,
+                            cornerRadius = CornerRadius(18.dp.toPx()),
+                            style = Stroke(width = 3.dp.toPx())
+                        )
+                    }
+                } else {
+                    Modifier
+                }
+            )
     ) {
-        Row(
-            horizontalArrangement = Arrangement.SpaceBetween,
-            verticalAlignment = Alignment.CenterVertically,
-            modifier = Modifier.padding(20.dp)
+        Surface(
+            shape = RoundedCornerShape(16.dp),
+            color = backgroundColor,
+            tonalElevation = 0.dp,
+            modifier = Modifier
+                .fillMaxWidth()
+                .padding(if (checked && enabled) 3.dp else 0.dp)
+                .clip(RoundedCornerShape(16.dp))
+                .clickable(enabled = enabled) { onChange(!checked) },
+            contentColor = contentColor
         ) {
             Row(
-                horizontalArrangement = Arrangement.spacedBy(12.dp),
+                horizontalArrangement = Arrangement.SpaceBetween,
                 verticalAlignment = Alignment.CenterVertically,
-                modifier = Modifier.weight(1f)
+                modifier = Modifier.padding(20.dp)
             ) {
-                // Icon
-                Icon(
-                    imageVector = ImageVector.vectorResource(R.drawable.ic_ear),
-                    contentDescription = null,
-                    tint = contentColor,
-                    modifier = Modifier.size(24.dp)
-                )
-
-                Column(
-                    verticalArrangement = Arrangement.spacedBy(2.dp)
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(12.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                    modifier = Modifier.weight(1f)
                 ) {
-                    Text(
-                        text = "Listen Mode",
-                        style = MaterialTheme.typography.bodyLarge,
-                        fontWeight = FontWeight.SemiBold,
-                        color = contentColor
+                    // Icon
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.ic_ear),
+                        contentDescription = null,
+                        tint = contentColor,
+                        modifier = Modifier.size(24.dp)
                     )
-                    Text(
-                        text = "Detect nearby sounds",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = contentColor.copy(alpha = 0.7f)
-                    )
-                }
-            }
 
-            Switch(
-                checked = checked,
-                onCheckedChange = onChange,
-                enabled = enabled,
-                colors = SwitchDefaults.colors(
-                    checkedThumbColor = MaterialTheme.colorScheme.primary.copy(0.75f),
-                    checkedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    checkedBorderColor = Color.Transparent,
-                    uncheckedThumbColor = MaterialTheme.colorScheme.outline,
-                    uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
-                    uncheckedBorderColor = Color.Transparent,
-                    disabledCheckedThumbColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
-                    disabledUncheckedThumbColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                    Column(
+                        verticalArrangement = Arrangement.spacedBy(2.dp)
+                    ) {
+                        Text(
+                            text = "Listen Mode",
+                            style = MaterialTheme.typography.bodyLarge,
+                            fontWeight = FontWeight.SemiBold,
+                            color = contentColor
+                        )
+                        Text(
+                            text = "Detect nearby sounds",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = contentColor.copy(alpha = 0.7f)
+                        )
+                    }
+                }
+
+                Switch(
+                    checked = checked,
+                    onCheckedChange = onChange,
+                    enabled = enabled,
+                    colors = SwitchDefaults.colors(
+                        checkedThumbColor = MaterialTheme.colorScheme.primary.copy(0.75f),
+                        checkedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        checkedBorderColor = Color.Transparent,
+                        uncheckedThumbColor = MaterialTheme.colorScheme.outline,
+                        uncheckedTrackColor = MaterialTheme.colorScheme.surfaceVariant,
+                        uncheckedBorderColor = Color.Transparent,
+                        disabledCheckedThumbColor = MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                        disabledUncheckedThumbColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
+                    )
                 )
-            )
+            }
         }
     }
 }
