@@ -15,8 +15,8 @@ import androidx.lifecycle.LifecycleService
 import androidx.lifecycle.lifecycleScope
 import com.google.android.gms.wearable.ChannelClient
 import com.google.android.gms.wearable.Wearable
+import com.pagzone.sonavi.presentation.data.repository.WearRepositoryImpl
 import com.pagzone.sonavi.presentation.util.Constants.MessagePaths.MIC_AUDIO_PATH
-import com.pagzone.sonavi.presentation.viewmodel.WearViewModel
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.isActive
@@ -61,6 +61,20 @@ class AudioStreamingService : LifecycleService() {
         )
     }
 
+    override fun onDestroy() {
+        super.onDestroy()
+        isRecording = false
+        streamingJob?.cancel()
+        try {
+            if (::audioRecord.isInitialized && audioRecord.state == AudioRecord.STATE_INITIALIZED) {
+                audioRecord.stop()
+                audioRecord.release()
+            }
+        } catch (e: Exception) {
+            Log.e(TAG, "Error in onDestroy", e)
+        }
+    }
+
     @RequiresPermission(Manifest.permission.RECORD_AUDIO)
     override fun onStartCommand(intent: Intent?, flags: Int, startId: Int): Int {
         super.onStartCommand(intent, flags, startId)
@@ -88,8 +102,23 @@ class AudioStreamingService : LifecycleService() {
         isRecording = true
         streamingJob = lifecycleScope.launch(Dispatchers.IO) {
             try {
+                // Reinitialize AudioRecord if it was released
+                if (audioRecord.state != AudioRecord.STATE_INITIALIZED) {
+                    audioRecord = AudioRecord(
+                        MediaRecorder.AudioSource.MIC,
+                        16000,
+                        AudioFormat.CHANNEL_IN_MONO,
+                        AudioFormat.ENCODING_PCM_16BIT,
+                        bufferSize
+                    )
+                }
+
                 channelClient = Wearable.getChannelClient(this@AudioStreamingService)
-                channel = channelClient.openChannel(nodeId, MIC_AUDIO_PATH).await()
+                channel = channelClient.openChannel(nodeId, MIC_AUDIO_PATH)
+                    .addOnFailureListener { exception ->
+                        Log.e(TAG, "Failed to open channel", exception)
+                        stopSelf()
+                    }.await()
                 outputStream = channelClient.getOutputStream(channel).await()
 
                 audioRecord.startRecording()
@@ -102,36 +131,51 @@ class AudioStreamingService : LifecycleService() {
                             outputStream?.write(buffer, 0, read)
                             outputStream?.flush()
                         } catch (e: IOException) {
-                            Log.e(TAG, "Output stream failed, stopping", e)
-                            // Stop gracefully if channel closes
-                            stopStreaming(channelClient, channel)
+                            Log.e(TAG, "Audio streaming interrupted", e)
+                            break // Exit loop gracefully
+                        } catch (e: Exception) {
+                            Log.e(TAG, "Unexpected error in audio streaming", e)
                             break
                         }
                     }
                 }
             } catch (e: IOException) {
                 Log.e(TAG, "Streaming setup failed", e)
+            } catch (e: IllegalStateException) {
+                Log.e(TAG, "AudioRecord error", e)
             } finally {
                 Log.d(TAG, "Cleaning up audio stream")
                 try {
+                    if (audioRecord.state == AudioRecord.STATE_INITIALIZED) {
+                        audioRecord.stop()
+                    }
                     outputStream?.close()
 
-                    val viewModel = WearViewModel()
-                    viewModel.toggleListening(false)
-                } catch (_: IOException) {
+                    // Update the actual state
+                    notifyListeningStopped()
+                } catch (e: IOException) {
+                    Log.e(TAG, "Error closing stream", e)
                 }
                 outputStream = null
-                audioRecord.release()
             }
         }
     }
 
+    private fun notifyListeningStopped() {
+        // Access your existing repository instance
+        WearRepositoryImpl.toggleListening(false)
+    }
+
     private fun stopStreaming(channelClient: ChannelClient, channel: ChannelClient.Channel) {
         isRecording = false
-        audioRecord.stop()
-        channelClient.close(channel)
-
-//        stopForeground(STOP_FOREGROUND_REMOVE)
+        try {
+            if (audioRecord.state == AudioRecord.STATE_INITIALIZED) {
+                audioRecord.stop()
+            }
+            channelClient.close(channel)
+        } catch (e: Exception) {
+            Log.e(TAG, "Error stopping stream", e)
+        }
     }
 
     private fun createNotificationChannel() {
