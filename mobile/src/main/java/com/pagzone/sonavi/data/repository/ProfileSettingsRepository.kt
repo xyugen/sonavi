@@ -10,9 +10,9 @@ class ProfileSettingsRepository @Inject constructor(
 ) {
     fun getProfileSettings(): Flow<ProfileSettings> = profileSettingsDataStore.profileFlow
 
-    suspend fun updateProfile(name: String, address: String): Result<Unit> {
+    suspend fun updateProfile(name: String, address: String?): Result<Unit> {
         return try {
-            profileSettingsDataStore.updateProfile(name.trim(), address.trim())
+            profileSettingsDataStore.updateProfile(name.trim(), address?.trim())
             Result.success(Unit)
         } catch (e: Exception) {
             Result.failure(e)

@@ -30,7 +30,7 @@ class ProfileSettingsViewModel @Inject constructor(
             initialValue = ProfileSettings()
         )
 
-    fun updateProfile(name: String, address: String) {
+    fun updateProfile(name: String, address: String?) {
         viewModelScope.launch {
             _uiState.value = _uiState.value.copy(isLoading = true, error = null)
 
@@ -50,28 +50,6 @@ class ProfileSettingsViewModel @Inject constructor(
                         error = exception.message ?: "Failed to update profile"
                     )
                 }
-        }
-    }
-
-    fun updateName(name: String) {
-        viewModelScope.launch {
-            profileSettingsRepository.updateName(name)
-        }
-    }
-
-    fun updateAddress(address: String) {
-        viewModelScope.launch {
-            profileSettingsRepository.updateAddress(address)
-        }
-    }
-
-    fun clearError() {
-        _uiState.value = _uiState.value.copy(error = null)
-    }
-
-    fun clearProfile() {
-        viewModelScope.launch {
-            profileSettingsRepository.clearProfile()
         }
     }
 }

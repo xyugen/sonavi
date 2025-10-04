@@ -43,10 +43,10 @@ class ProfileSettingsDataStore @Inject constructor(
             )
         }
 
-    suspend fun updateProfile(name: String, address: String) {
+    suspend fun updateProfile(name: String, address: String?) {
         dataStore.edit { preferences ->
             preferences[PROFILE_NAME_KEY] = name
-            preferences[PROFILE_ADDRESS_KEY] = address
+            preferences[PROFILE_ADDRESS_KEY] = address ?: ""
         }
     }
 

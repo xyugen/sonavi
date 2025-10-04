@@ -1,6 +1,5 @@
 package com.pagzone.sonavi
 
-import android.Manifest
 import android.app.Activity
 import android.app.AlertDialog
 import android.content.Context
@@ -11,7 +10,6 @@ import android.widget.Toast
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
 import androidx.activity.enableEdgeToEdge
-import androidx.activity.result.contract.ActivityResultContracts
 import androidx.activity.viewModels
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.LaunchedEffect
@@ -22,7 +20,6 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.graphics.luminance
 import androidx.compose.ui.platform.LocalView
-import androidx.core.content.ContextCompat
 import androidx.core.content.edit
 import androidx.core.view.WindowCompat
 import androidx.datastore.core.DataStore
@@ -98,10 +95,10 @@ class MainActivity : ComponentActivity() {
                 var showOnboarding by remember { mutableStateOf(isFirstLaunch()) }
 
                 if (showOnboarding) {
-                    OnboardingScreen {
+                    OnboardingScreen(onComplete = {
                         showOnboarding = false
                         markOnboardingComplete()
-                    }
+                    })
                 } else {
                     MainScreen(
                         navController = navController,
