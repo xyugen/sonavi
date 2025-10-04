@@ -34,6 +34,7 @@ import com.pagzone.sonavi.data.repository.EmergencyContactRepository
 import com.pagzone.sonavi.data.repository.SoundPreferencesRepositoryImpl
 import com.pagzone.sonavi.data.repository.SoundRepository
 import com.pagzone.sonavi.domain.EmergencyHandler
+import com.pagzone.sonavi.domain.PermissionManager
 import com.pagzone.sonavi.service.AudioClassifierService
 import com.pagzone.sonavi.service.SmsService
 import com.pagzone.sonavi.ui.navigation.NavigationManager
@@ -61,14 +62,6 @@ class MainActivity : ComponentActivity() {
 
     private var pendingOnboardingComplete: (() -> Unit)? = null
 
-    private val audioPermissionLauncher = registerForActivityResult(
-        ActivityResultContracts.RequestPermission()
-    ) { isGranted ->
-        if (!isGranted) {
-            Toast.makeText(this, "Audio recording permission required", Toast.LENGTH_SHORT).show()
-        }
-    }
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         enableEdgeToEdge()
@@ -79,12 +72,7 @@ class MainActivity : ComponentActivity() {
         SmsService.init(this)
         EmergencyHandler.init(this, emergencyRepository, soundRepository)
 
-        // TODO: move to onboarding page
-        if (ContextCompat.checkSelfPermission(this, Manifest.permission.RECORD_AUDIO)
-            != PackageManager.PERMISSION_GRANTED
-        ) {
-            audioPermissionLauncher.launch(Manifest.permission.RECORD_AUDIO)
-        }
+        PermissionManager.initializeLaunchers(this)
 
         setContent {
             SonaviTheme {
