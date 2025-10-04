@@ -46,6 +46,7 @@ import androidx.compose.material3.CardDefaults
 import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
+import androidx.compose.material3.IconButtonDefaults
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
@@ -195,12 +196,18 @@ fun AddSoundPage(
         ) {
             Text(
                 text = "Create Custom Sound",
-                style = MaterialTheme.typography.labelMedium.copy(
+                style = MaterialTheme.typography.labelLarge.copy(
                     fontWeight = FontWeight.Bold
-                )
+                ),
+                color = MaterialTheme.colorScheme.onBackground
             )
-            IconButton(onClick = { showHelpDialog = true }) {
-                Icon(Icons.Default.Info, contentDescription = "Help")
+            IconButton(
+                onClick = { showHelpDialog = true },
+                colors = IconButtonDefaults.iconButtonColors(
+                    contentColor = MaterialTheme.colorScheme.primary
+                )
+            ) {
+                Icon(ImageVector.vectorResource(R.drawable.ic_info), contentDescription = "Help")
             }
         }
 
@@ -385,7 +392,8 @@ private fun AudioSamplesStep(
             Column {
                 Text(
                     text = "Add audio samples",
-                    style = MaterialTheme.typography.titleMedium
+                    style = MaterialTheme.typography.titleMedium,
+                    color = MaterialTheme.colorScheme.onBackground
                 )
                 Text(
                     text = "${samples.size} added (minimum 3)",
@@ -500,16 +508,19 @@ private fun AudioSamplesStep(
             ) {
                 Icon(Icons.AutoMirrored.Default.ArrowBack, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
-                Text("Back")
+                Text("Back", style = MaterialTheme.typography.labelLarge)
             }
 
             Button(
                 onClick = onNext,
                 enabled = samples.size >= 3 && !isRecording,
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
             ) {
-                Text("Continue")
+                Text("Continue", style = MaterialTheme.typography.labelLarge)
                 Spacer(Modifier.width(8.dp))
                 Icon(Icons.AutoMirrored.Default.ArrowForward, null, modifier = Modifier.size(18.dp))
             }
@@ -725,14 +736,24 @@ private fun NameInputStep(
     ) {
         Text(
             text = "What sound do you want to detect?",
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground
         )
 
         OutlinedTextField(
             value = soundName,
             onValueChange = onNameChanged,
-            label = { Text("Sound name") },
-            placeholder = { Text("e.g., My dog barking, Baby crying") },
+            label = {
+                Text(
+                    "Sound name"
+                )
+            },
+            placeholder = {
+                Text(
+                    "e.g., My dog barking, Baby crying",
+                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                )
+            },
             modifier = Modifier.fillMaxWidth(),
             singleLine = true,
             shape = RoundedCornerShape(12.dp)
@@ -766,9 +787,12 @@ private fun NameInputStep(
             onClick = onNext,
             enabled = soundName.isNotBlank(),
             modifier = Modifier.fillMaxWidth(),
-            shape = RoundedCornerShape(12.dp)
+            shape = RoundedCornerShape(12.dp),
+            colors = ButtonDefaults.buttonColors(
+                contentColor = MaterialTheme.colorScheme.onPrimary
+            )
         ) {
-            Text("Next")
+            Text("Next", style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.width(8.dp))
             Icon(Icons.AutoMirrored.Default.ArrowForward, null, modifier = Modifier.size(18.dp))
         }
@@ -808,7 +832,8 @@ private fun AudioVisualizerCard(
                     Text(
                         text = "Recording",
                         style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.onSurface
                     )
                 }
 
@@ -1079,7 +1104,8 @@ private fun PreviewAndSaveStep(
     ) {
         Text(
             text = "Review your custom sound",
-            style = MaterialTheme.typography.titleMedium
+            style = MaterialTheme.typography.titleMedium,
+            color = MaterialTheme.colorScheme.onBackground
         )
 
         Card(
@@ -1121,13 +1147,15 @@ private fun PreviewAndSaveStep(
                         text = "What happens next?",
                         style = MaterialTheme.typography.titleSmall.copy(
                             fontWeight = FontWeight.SemiBold
-                        )
+                        ),
+                        color = MaterialTheme.colorScheme.onBackground
                     )
                     Spacer(Modifier.height(4.dp))
                     Text(
                         text = "Your samples will be processed to create a unique sound signature. " +
                                 "The app will then alert you when it detects similar sounds.",
                         style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onBackground,
                         lineHeight = 18.sp
                     )
                 }
@@ -1150,19 +1178,22 @@ private fun PreviewAndSaveStep(
                     modifier = Modifier.size(18.dp)
                 )
                 Spacer(Modifier.width(8.dp))
-                Text("Back", style = MaterialTheme.typography.labelMedium)
+                Text("Back", style = MaterialTheme.typography.labelLarge)
             }
 
             Button(
                 onClick = onSave,
                 modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp)
+                shape = RoundedCornerShape(12.dp),
+                colors = ButtonDefaults.buttonColors(
+                    contentColor = MaterialTheme.colorScheme.onPrimary
+                )
             ) {
                 Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp))
                 Spacer(Modifier.width(8.dp))
                 Text(
                     "Create Sound",
-                    style = MaterialTheme.typography.labelMedium,
+                    style = MaterialTheme.typography.labelLarge,
                     maxLines = 1,
                     overflow = TextOverflow.Ellipsis
                 )

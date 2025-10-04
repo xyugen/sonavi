@@ -17,6 +17,7 @@ val Blue40 = Color(0xFF6090fa)
 val Blue30 = Color(0xFFbfd3fe)
 val Blue20 = Color(0xFFbfd3fe)
 val Blue10 = Color(0xFFdbe6fe)
+val Blue5 = Color(0xFFeff6ff)
 
 val Slate90 = Color(0xFF0f172b)
 val Slate80 = Color(0xFF1d293d)

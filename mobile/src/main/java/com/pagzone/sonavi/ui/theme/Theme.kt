@@ -11,7 +11,7 @@ import androidx.compose.runtime.remember
 
 private val LightColorScheme = lightColorScheme(
     primary = Blue50,
-    onPrimary = Blue10,
+    onPrimary = Blue5,
     secondary = Slate50,
     onSecondary = Gray90,
     tertiary = Slate50,
@@ -36,7 +36,7 @@ private val LightColorScheme = lightColorScheme(
 
 private val DarkColorScheme = darkColorScheme(
     primary = Blue60,                        // Changed: Brighter for visibility
-    onPrimary = Blue10,
+    onPrimary = Blue5,
     secondary = Slate70,                     // Changed: Slightly lighter
     onSecondary = Gray10,
     tertiary = Slate70,                      // Changed: Slightly lighter
