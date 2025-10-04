@@ -1,7 +1,6 @@
 package com.pagzone.sonavi.ui.component
 
 import androidx.compose.foundation.background
-import androidx.compose.foundation.isSystemInDarkTheme
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.padding
@@ -57,13 +56,7 @@ fun ScreenWithScaffold(
         Box(
             modifier = Modifier
                 .fillMaxSize()
-                .then(
-                    if (isSystemInDarkTheme()) {
-                        Modifier.background(MaterialTheme.colorScheme.background)
-                    } else {
-                        Modifier.background(gradient)
-                    }
-                )
+                .background(MaterialTheme.colorScheme.background)
                 .padding(innerPadding)
         ) {
             content(Modifier.padding(horizontal = 21.dp))
