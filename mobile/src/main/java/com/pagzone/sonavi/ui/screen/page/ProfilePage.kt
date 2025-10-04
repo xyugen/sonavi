@@ -676,7 +676,7 @@ fun EditProfileDialog(
     var name by remember { mutableStateOf(currentName) }
     var address by remember { mutableStateOf(currentAddress) }
 
-    val isFormValid = name.isNotBlank() && address.isNotBlank()
+    val isFormValid = name.isNotBlank()
     val hasChanges = name != currentName || address != currentAddress
 
     AlertDialog(
@@ -712,7 +712,7 @@ fun EditProfileDialog(
                 OutlinedTextField(
                     value = address,
                     onValueChange = { address = it },
-                    label = { Text("Address") },
+                    label = { Text("Address (Optional)") },
                     placeholder = { Text("Enter your address") },
                     modifier = Modifier.fillMaxWidth(),
                     enabled = !isLoading,

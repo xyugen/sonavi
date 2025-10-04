@@ -6,9 +6,12 @@ import android.util.Log
 import androidx.core.app.NotificationCompat
 import com.pagzone.sonavi.R
 import com.pagzone.sonavi.data.repository.EmergencyContactRepository
+import com.pagzone.sonavi.data.repository.ProfileSettingsRepository
 import com.pagzone.sonavi.data.repository.SoundRepository
+import com.pagzone.sonavi.model.ProfileSettings
 import com.pagzone.sonavi.model.SoundProfile
 import com.pagzone.sonavi.service.SmsService
+import kotlinx.coroutines.flow.first
 import java.text.SimpleDateFormat
 import java.util.Date
 import java.util.Locale
@@ -17,18 +20,23 @@ object EmergencyHandler {
     private lateinit var appContext: Context
     private lateinit var emergencyContactRepository: EmergencyContactRepository
     private lateinit var soundRepository: SoundRepository
+    private lateinit var profileSettingsRepository: ProfileSettingsRepository
 
     fun init(
         context: Context,
         emergencyRepository: EmergencyContactRepository,
-        soundRepository: SoundRepository
+        soundRepository: SoundRepository,
+        profileSettingsRepository: ProfileSettingsRepository
     ) {
         this.appContext = context.applicationContext
         this.emergencyContactRepository = emergencyRepository
         this.soundRepository = soundRepository
+        this.profileSettingsRepository = profileSettingsRepository
     }
 
     suspend fun handleEmergencyEvent(sound: SoundProfile, confidence: Float) {
+        val profile = profileSettingsRepository.getProfileSettings().first()
+
         if (!sound.isEnabled) {
             Log.d("EmergencyHandler", "Sound not enabled")
             return
@@ -47,7 +55,7 @@ object EmergencyHandler {
         try {
             val contacts = emergencyContactRepository.getActiveEmergencyContacts()
             Log.d("EmergencyHandler", "Contacts: $contacts")
-            val message = generateMessage(sound, confidence)
+            val message = generateMessage(sound, confidence, profile)
 
             contacts.forEach { contact ->
                 SmsService.sendEmergencySms(contact.number, message)
@@ -81,8 +89,13 @@ object EmergencyHandler {
         return (System.currentTimeMillis() - lastSent.time) < cooldownMs
     }
 
-    private fun generateMessage(sound: SoundProfile, confidence: Float): String {
+    private fun generateMessage(
+        sound: SoundProfile,
+        confidence: Float,
+        profile: ProfileSettings
+    ): String {
+        val hasAddress = profile.address.isNotEmpty()
         val timeStr = SimpleDateFormat("HH:mm", Locale.getDefault()).format(Date())
-        return "🚨 ALERT\n${sound.displayName} detected at $timeStr with ${(confidence * 100).toInt()}% confidence.\n\nSent with Sonavi"
+        return "🚨 ALERT\n${sound.displayName} detected at $timeStr with ${(confidence * 100).toInt()}% confidence.\n\nSent with Sonavi from ${profile.name}${if (hasAddress) " - ${profile.address}" else ""}"
     }
 }

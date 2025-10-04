@@ -28,6 +28,7 @@ import androidx.datastore.preferences.preferencesDataStore
 import androidx.navigation.compose.rememberNavController
 import com.pagzone.sonavi.data.repository.ClientDataRepositoryImpl
 import com.pagzone.sonavi.data.repository.EmergencyContactRepository
+import com.pagzone.sonavi.data.repository.ProfileSettingsRepository
 import com.pagzone.sonavi.data.repository.SoundPreferencesRepositoryImpl
 import com.pagzone.sonavi.data.repository.SoundRepository
 import com.pagzone.sonavi.domain.EmergencyHandler
@@ -55,6 +56,9 @@ class MainActivity : ComponentActivity() {
     @Inject
     lateinit var soundRepository: SoundRepository
 
+    @Inject
+    lateinit var profileSettingsRepository: ProfileSettingsRepository
+
     private val clientDataViewModel: ClientDataViewModel by viewModels()
 
     private var pendingOnboardingComplete: (() -> Unit)? = null
@@ -67,7 +71,7 @@ class MainActivity : ComponentActivity() {
         ClientDataRepositoryImpl.init(this)
         AudioClassifierService.init(this)
         SmsService.init(this)
-        EmergencyHandler.init(this, emergencyRepository, soundRepository)
+        EmergencyHandler.init(this, emergencyRepository, soundRepository, profileSettingsRepository)
 
         PermissionManager.initializeLaunchers(this)
 
