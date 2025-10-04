@@ -1,6 +1,7 @@
 package com.pagzone.sonavi.data.store
 
 import android.content.Context
+import androidx.datastore.preferences.core.booleanPreferencesKey
 import androidx.datastore.preferences.core.edit
 import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
@@ -65,6 +66,18 @@ class ProfileSettingsDataStore @Inject constructor(
         dataStore.edit { preferences ->
             preferences.remove(PROFILE_NAME_KEY)
             preferences.remove(PROFILE_ADDRESS_KEY)
+        }
+    }
+
+    suspend fun saveThemePreference(isDark: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[booleanPreferencesKey("dark_mode")] = isDark
+        }
+    }
+
+    fun getThemePreference(): Flow<Boolean> {
+        return dataStore.data.map { preferences ->
+            preferences[booleanPreferencesKey("dark_mode")] ?: false
         }
     }
 }

@@ -1,9 +1,7 @@
 package com.pagzone.sonavi.ui.component
 
-import androidx.compose.foundation.background
-import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
-import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.WindowInsets
 import androidx.compose.foundation.layout.asPaddingValues
@@ -14,6 +12,7 @@ import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
@@ -32,18 +31,26 @@ fun TopAppBar(
             .padding(WindowInsets.statusBars.asPaddingValues())
             .padding(horizontal = 21.dp, vertical = 16.dp)
     ) {
-        Row(
-            modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.Center
+        Box(
+            modifier = Modifier.fillMaxWidth()
         ) {
+            // Centered title
             Text(
-                title,
+                text = title,
                 style = MaterialTheme.typography.titleLarge,
                 color = MaterialTheme.colorScheme.onSurface,
-                fontWeight = FontWeight.Medium
+                fontWeight = FontWeight.Medium,
+                modifier = Modifier.align(Alignment.Center)
+            )
+
+            // Theme toggle at end
+            ThemeToggleButton(
+                modifier = Modifier.align(Alignment.CenterEnd)
             )
         }
+
         Spacer(modifier = Modifier.height(12.dp))
+
         ListenModeToggle(
             checked = isListenModeChecked,
             enabled = isListenModeEnabled,
