@@ -389,7 +389,7 @@ private fun StatsAndToggleSection(
             .fillMaxWidth()
             .padding(bottom = 4.dp),
         colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            containerColor = MaterialTheme.colorScheme.secondaryContainer
         ),
         shape = RoundedCornerShape(12.dp),
         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
@@ -418,7 +418,7 @@ private fun StatsAndToggleSection(
                     style = MaterialTheme.typography.bodyMedium.copy(
                         fontWeight = FontWeight.Medium
                     ),
-                    color = MaterialTheme.colorScheme.onSurface
+                    color = MaterialTheme.colorScheme.onSecondaryContainer
                 )
             }
 
@@ -446,7 +446,7 @@ private fun StatsAndToggleSection(
                     Text(
                         text = if (allEnabled) "Disable All" else "Enable All",
                         style = MaterialTheme.typography.bodyMedium.copy(
-                            fontWeight = FontWeight.SemiBold
+                            fontWeight = FontWeight.Medium
                         ),
                         color = MaterialTheme.colorScheme.primary
                     )
@@ -992,7 +992,7 @@ fun EditModalSheet(
                                 Text(
                                     text = "Sound Name",
                                     style = MaterialTheme.typography.titleMedium,
-                                    fontWeight = FontWeight.SemiBold,
+                                    fontWeight = FontWeight.Medium,
                                     color = MaterialTheme.colorScheme.onSurface
                                 )
                             }
@@ -1077,7 +1077,7 @@ fun EditModalSheet(
                                         Text(
                                             text = "Critical Sound",
                                             style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.SemiBold,
+                                            fontWeight = FontWeight.Medium,
                                             color = MaterialTheme.colorScheme.onSurface
                                         )
 
@@ -1160,7 +1160,7 @@ fun EditModalSheet(
                                     Text(
                                         text = "Detection Threshold",
                                         style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold,
+                                        fontWeight = FontWeight.Medium,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
 
@@ -1336,7 +1336,7 @@ fun EditModalSheet(
                                     Text(
                                         text = "Vibration Pattern",
                                         style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.SemiBold,
+                                        fontWeight = FontWeight.Medium,
                                         color = MaterialTheme.colorScheme.onSurface
                                     )
 
@@ -1546,8 +1546,8 @@ fun EditModalSheet(
 
                             Text(
                                 text = "Save Sound Settings",
-                                style = MaterialTheme.typography.titleMedium,
-                                fontWeight = FontWeight.SemiBold
+                                style = MaterialTheme.typography.labelLarge,
+                                fontWeight = FontWeight.Medium
                             )
                         }
                     }
@@ -1569,13 +1569,15 @@ fun SoundCard(
     var showMenu by remember { mutableStateOf(false) }
 
     val cardBackgroundColor =
-        if (isSnoozed) Color(0xFFE0DBB7)
-        else if (sound.isEnabled) MaterialTheme.colorScheme.secondary
+        if (isSnoozed) MaterialTheme.colorScheme.tertiaryContainer
+        else if (sound.isEnabled) MaterialTheme.colorScheme.primaryContainer
         else MaterialTheme.colorScheme.surfaceVariant
+
     val iconButtonColor =
-        if (isSnoozed) Color(0xFFE18D17)
+        if (isSnoozed) MaterialTheme.colorScheme.tertiary
         else if (sound.isEnabled) MaterialTheme.colorScheme.primary
-        else MaterialTheme.colorScheme.secondary
+        else MaterialTheme.colorScheme.onSurfaceVariant
+
     val icon =
         if (isSnoozed) ImageVector.vectorResource(id = R.drawable.ic_snooze)
         else if (sound.isEnabled) ImageVector.vectorResource(id = R.drawable.ic_sensors)
@@ -1624,7 +1626,9 @@ fun SoundCard(
                         Icon(
                             imageVector = icon,
                             contentDescription = sound.displayName,
-                            tint = Color.White,
+                            tint = if (isSnoozed) MaterialTheme.colorScheme.onTertiary
+                            else if (sound.isEnabled) MaterialTheme.colorScheme.onPrimary
+                            else MaterialTheme.colorScheme.surface,
                             modifier = Modifier.size(24.dp)
                         )
 
@@ -1638,7 +1642,7 @@ fun SoundCard(
                                 text = formatDuration(remainingMinutes.toInt()),
                                 style = MaterialTheme.typography.labelSmall,
                                 fontSize = 8.sp,
-                                color = Color.White
+                                color = MaterialTheme.colorScheme.onTertiary
                             )
                         }
                     }
@@ -1652,13 +1656,13 @@ fun SoundCard(
                             .offset(x = 4.dp, y = (-4).dp)
                             .size(18.dp)
                             .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.tertiary),
+                            .background(MaterialTheme.colorScheme.secondary),
                         contentAlignment = Alignment.Center
                     ) {
                         Icon(
                             imageVector = ImageVector.vectorResource(R.drawable.ic_watch_vibration),
                             contentDescription = "Custom vibration",
-                            tint = MaterialTheme.colorScheme.onTertiary,
+                            tint = MaterialTheme.colorScheme.onSecondary,
                             modifier = Modifier.size(12.dp)
                         )
                     }
@@ -1678,7 +1682,7 @@ fun SoundCard(
                     Text(
                         text = sound.displayName,
                         style = MaterialTheme.typography.bodyLarge.copy(
-                            fontWeight = FontWeight.SemiBold,
+                            fontWeight = FontWeight.Medium,
                             fontSize = 16.sp
                         ),
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = contentAlpha),
@@ -1690,7 +1694,7 @@ fun SoundCard(
                     Spacer(modifier = Modifier.width(6.dp))
 
                     Surface(
-                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.6f),
+                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.4f),
                         shape = RoundedCornerShape(6.dp)
                     ) {
                         val soundLabel = if (sound.isBuiltIn) "Built-in" else "Custom"
@@ -1723,11 +1727,11 @@ fun SoundCard(
                                 .clip(CircleShape)
                                 .background(
                                     if (isSnoozed)
-                                        Color(0xFFE18D17)
+                                        MaterialTheme.colorScheme.tertiary
                                     else if (sound.isEnabled)
-                                        Color(0xFF4CAF50)
+                                        MaterialTheme.colorScheme.primary
                                     else
-                                        Color(0xFF1768E1)
+                                        MaterialTheme.colorScheme.onSurfaceVariant
                                 )
                         )
 
@@ -1741,11 +1745,11 @@ fun SoundCard(
                             ),
                             color =
                                 if (isSnoozed)
-                                    Color(0xFFE18D17)
+                                    MaterialTheme.colorScheme.tertiary
                                 else if (sound.isEnabled)
-                                    Color(0xFF4CAF50)
+                                    MaterialTheme.colorScheme.onPrimaryContainer
                                 else
-                                    Color(0xFF1768E1)
+                                    MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
 
@@ -1790,7 +1794,7 @@ fun SoundCard(
                                 style = MaterialTheme.typography.bodySmall.copy(
                                     fontSize = 12.sp
                                 ),
-                                color = MaterialTheme.colorScheme.primary
+                                color = MaterialTheme.colorScheme.onPrimaryContainer
                             )
                         }
                 }
