@@ -26,7 +26,7 @@ fun ScreenWithScaffold(
     onStopListening: () -> Unit,
     content: @Composable (Modifier) -> Unit
 ) {
-    val gradient = Brush.verticalGradient(
+    Brush.verticalGradient(
         colors = listOf(MaterialTheme.colorScheme.surfaceVariant.copy(0.5f), Color.Transparent)
     )
 
