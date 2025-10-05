@@ -6,11 +6,12 @@ import androidx.wear.compose.foundation.pager.HorizontalPager
 import androidx.wear.compose.foundation.pager.rememberPagerState
 import androidx.wear.compose.material3.HorizontalPageIndicator
 import androidx.wear.compose.material3.HorizontalPagerScaffold
+import com.pagzone.sonavi.presentation.model.SoundPrediction
 
 @Composable
 fun ListeningPagerScreen(
     onStopListening: () -> Unit,
-    detectedSound: String
+    detectedSound: SoundPrediction?
 ) {
     val pageCount = 2
     val initialPage = 1

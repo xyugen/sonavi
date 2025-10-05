@@ -21,6 +21,7 @@ fun WearNavGraph(
 ) {
     val isConnected by viewModel.isConnected.collectAsState()
     val isListening by viewModel.isListening.collectAsState()
+    val detectedSound by viewModel.soundPrediction.collectAsState()
 
     LaunchedEffect(isConnected) {
         Log.d("WearNavGraph", "isConnected changed to: $isConnected")
@@ -57,7 +58,7 @@ fun WearNavGraph(
                     stopListening()
                     navController.popBackStack()
                 },
-                detectedSound = "Test"
+                detectedSound = detectedSound
             )
         }
     }

@@ -4,6 +4,7 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pagzone.sonavi.presentation.data.repository.WearRepository
 import com.pagzone.sonavi.presentation.data.repository.WearRepositoryImpl
+import com.pagzone.sonavi.presentation.model.SoundPrediction
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 
@@ -13,6 +14,7 @@ class WearViewModel(
     val isConnected: StateFlow<Boolean> = repository.isConnected
     val nodeId: StateFlow<String?> = repository.nodeId
     val isListening: StateFlow<Boolean> = repository.isListening
+    val soundPrediction: StateFlow<SoundPrediction?> = repository.soundPrediction
 
     fun initializeListeners() {
         viewModelScope.launch {

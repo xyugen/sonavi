@@ -3,15 +3,17 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.kotlin.compose)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.kotlin.ksp)
+    alias(libs.plugins.hilt.android)
 }
 
 android {
     namespace = "com.pagzone.sonavi"
-    compileSdk = 35
+    compileSdk = 36
 
     defaultConfig {
         applicationId = "com.pagzone.sonavi"
-        minSdk = 24
+        minSdk = 27
         targetSdk = 35
         versionCode = 1
         versionName = "1.0"
@@ -40,6 +42,10 @@ android {
     }
 }
 
+hilt {
+    enableAggregatingTask = false
+}
+
 dependencies {
 
     implementation(libs.androidx.core.ktx)
@@ -50,6 +56,7 @@ dependencies {
     implementation(libs.androidx.ui.graphics)
     implementation(libs.androidx.ui.tooling.preview)
     implementation(libs.androidx.material3)
+    implementation(libs.play.services.location)
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
@@ -62,11 +69,33 @@ dependencies {
     implementation(libs.kotlinx.serialization.json)
     implementation(libs.play.services.wearable)
     implementation(libs.kotlinx.coroutines.play.services)
-    implementation(libs.androidx.hilt.navigation.fragment)
+    implementation(libs.androidx.datastore.preferences)
+
+    // Hilt
+    // Hilt Core
+    implementation(libs.hilt.android)
+    ksp(libs.hilt.android.compiler)
+
+    // Hilt for Compose
+    implementation(libs.androidx.hilt.navigation.compose)
+
+    // ViewModel Compose
+    implementation(libs.androidx.lifecycle.viewmodel.compose)
 
     // LiteRT
     // https://mvnrepository.com/artifact/com.google.ai.edge.litert/litert
     implementation(libs.litert)
     // https://mvnrepository.com/artifact/com.google.ai.edge.litert/litert-support
     implementation(libs.litert.support)
+
+    // Room
+    implementation(libs.androidx.room.runtime)
+    ksp(libs.androidx.room.compiler)
+    implementation(libs.androidx.room.ktx)
+
+    // https://github.com/EmergenceAI/kotlin_speech_features
+    implementation(libs.kotlin.speech.features)
+
+    // https://mvnrepository.com/artifact/com.google.code.gson/gson
+    implementation(libs.gson)
 }

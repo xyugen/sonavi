@@ -1,4 +1,4 @@
-package com.pagzone.sonavi.util
+package com.pagzone.sonavi.service
 
 import android.content.Context
 import android.os.Handler
@@ -7,7 +7,10 @@ import android.util.Log
 import android.widget.Toast
 import com.google.android.gms.wearable.ChannelIOException
 import com.pagzone.sonavi.data.repository.ClassificationResultRepositoryImpl
+import com.pagzone.sonavi.domain.EmergencyHandler
+import com.pagzone.sonavi.domain.HybridYamnetClassifier
 import com.pagzone.sonavi.model.ClassificationResult
+import com.pagzone.sonavi.model.VibrationEffectDTO
 import com.pagzone.sonavi.viewmodel.ClientDataViewModel
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -20,11 +23,12 @@ import java.nio.ByteOrder
 
 object AudioClassifierService {
     private lateinit var appContext: Context
-    private lateinit var classifier: YamnetClassifier
+    private lateinit var hybridYamnetClassifier: HybridYamnetClassifier
+    private val clientDataViewModel = ClientDataViewModel()
 
     fun init(context: Context) {
         appContext = context.applicationContext
-        classifier = YamnetClassifier(appContext)
+        hybridYamnetClassifier = HybridYamnetClassifier(context = appContext)
     }
 
     fun classifyStream(inputStream: InputStream, scope: CoroutineScope) {
@@ -39,16 +43,12 @@ object AudioClassifierService {
                     val read = try {
                         inputStream.read(buffer)
                     } catch (e: ChannelIOException) {
-                        Log.w("AudioClassifier", "Watch disconnected during stream: ${e.message}")
-
+                        Log.w("AudioClassifier", "Watch disconnected: ${e.message}")
                         Handler(Looper.getMainLooper()).post {
-                            Toast.makeText(
-                                appContext,
-                                "Watch disconnected",
-                                Toast.LENGTH_SHORT
-                            ).show()
+                            Toast.makeText(appContext, "Watch disconnected", Toast.LENGTH_SHORT)
+                                .show()
                         }
-                        break // Exit loop gracefully
+                        break
                     } catch (e: IOException) {
                         Log.e("AudioClassifier", "I/O error reading stream", e)
                         break
@@ -68,30 +68,50 @@ object AudioClassifierService {
                     }
 
                     if (offset >= floatBuffer.size) {
-                        val (label, confidence) = classifier.classify(floatBuffer)
-                        if (confidence > 0.7f)
+                        val (sound, confidence) = hybridYamnetClassifier.classify(floatBuffer)
+
+                        if (sound != null && confidence >= sound.threshold) {
                             ClassificationResultRepositoryImpl.addResult(
-                                ClassificationResult(label, confidence)
+                                ClassificationResult(
+                                    sound.displayName,
+                                    confidence,
+                                    sound.isCritical
+                                )
                             )
-                        Log.d("Yamnet", "Label: $label, Conf: $confidence")
+
+                            clientDataViewModel.sendPrediction(
+                                sound.displayName,
+                                confidence,
+                                sound.isCritical,
+                                VibrationEffectDTO(
+                                    timings = sound.vibrationPattern,
+                                    repeat = -1
+                                )
+                            )
+
+                            if (sound.isCritical) {
+                                Log.d("AudioClassifierService", "Handling emergency event")
+                                EmergencyHandler.handleEmergencyEvent(sound, confidence)
+                                Log.d("AudioClassifierService", "Emergency event handled")
+                            }
+
+                            Log.d(
+                                "FewShot",
+                                "Label: ${sound.displayName}, Conf: $confidence"
+                            )
+                        }
+
                         offset = 0
                     }
                 }
             } finally {
                 try {
                     inputStream.close()
-
-                    val viewModel = ClientDataViewModel()
-                    viewModel.toggleListening(false)
+                    ClientDataViewModel().toggleListening(false)
                 } catch (e: IOException) {
                     Log.w("AudioClassifier", "Error closing inputStream", e)
                 }
             }
-            // No classifier.close() here
         }
-    }
-
-    fun shutdown() {
-        classifier.close()
     }
 }

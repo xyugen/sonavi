@@ -13,10 +13,13 @@ import com.google.android.gms.wearable.DataEventBuffer
 import com.google.android.gms.wearable.MessageEvent
 import com.google.android.gms.wearable.Wearable
 import com.pagzone.sonavi.R
-import com.pagzone.sonavi.util.AudioClassifierService
+import com.pagzone.sonavi.model.SoundPredictionDTO
+import com.pagzone.sonavi.model.VibrationEffectDTO
+import com.pagzone.sonavi.service.AudioClassifierService
 import com.pagzone.sonavi.util.AudioStreamReceiver
 import com.pagzone.sonavi.util.Constants.Capabilities.WEAR_CAPABILITY
 import com.pagzone.sonavi.util.Constants.MessagePaths.MIC_AUDIO_PATH
+import com.pagzone.sonavi.util.Constants.MessagePaths.SOUND_DETECTED_PATH
 import com.pagzone.sonavi.util.Constants.MessagePaths.START_LISTENING_PATH
 import com.pagzone.sonavi.util.Constants.MessagePaths.STOP_LISTENING_PATH
 import com.pagzone.sonavi.viewmodel.Event
@@ -27,6 +30,7 @@ import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.tasks.await
+import kotlinx.serialization.json.Json
 
 interface ClientDataRepository {
     val isConnected: StateFlow<Boolean>
@@ -39,6 +43,7 @@ interface ClientDataRepository {
     fun setDeviceName(name: String)
     fun setNodeId(nodeId: String)
     fun toggleListening(enable: Boolean)
+    fun retryConnection()
     fun clearData()
     fun clearEvents()
 
@@ -56,6 +61,12 @@ interface ClientDataRepository {
     suspend fun handleMessage(messageEvent: MessageEvent)
     fun handleDataChange(dataEvents: DataEventBuffer)
     fun handleCapability(capabilityInfo: CapabilityInfo)
+    fun sendPrediction(
+        label: String,
+        confidence: Float,
+        isCritical: Boolean,
+        vibration: VibrationEffectDTO
+    )
 }
 
 object ClientDataRepositoryImpl : ClientDataRepository {
@@ -216,6 +227,15 @@ object ClientDataRepositoryImpl : ClientDataRepository {
         } ?: Log.e(TAG, "Node ID is null, cannot stop listening")
     }
 
+    override fun retryConnection() {
+        try {
+            destroyListeners()
+            initializeListeners()
+        } catch (e: Exception) {
+            Log.e(TAG, "Failed to retry connection: ${e.message}")
+        }
+    }
+
     override suspend fun handleChannelOpened(channel: ChannelClient.Channel) {
         when (channel.path) {
             MIC_AUDIO_PATH -> {
@@ -274,5 +294,27 @@ object ClientDataRepositoryImpl : ClientDataRepository {
 
             Log.d(TAG, "No wearable connected")
         }
+    }
+
+    override fun sendPrediction(
+        label: String,
+        confidence: Float,
+        isCritical: Boolean,
+        vibration: VibrationEffectDTO
+    ) {
+        Log.d(TAG, "Sending prediction: $label")
+
+        val data = SoundPredictionDTO(label, confidence, isCritical, vibration)
+        val jsonString = Json.encodeToString(data)
+
+        nodeId.value?.let { id ->
+            messageClient.sendMessage(id, SOUND_DETECTED_PATH, jsonString.toByteArray())
+                .addOnSuccessListener {
+                    Log.d(TAG, "Message sent")
+                }
+                .addOnFailureListener {
+                    Log.e(TAG, "Failed to send message", it)
+                }
+        } ?: Log.e(TAG, "Node ID is null, cannot stop listening")
     }
 }

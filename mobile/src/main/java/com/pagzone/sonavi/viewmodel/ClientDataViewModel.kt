@@ -5,12 +5,10 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.pagzone.sonavi.data.repository.ClientDataRepository
 import com.pagzone.sonavi.data.repository.ClientDataRepositoryImpl
-import dagger.hilt.android.lifecycle.HiltViewModel
+import com.pagzone.sonavi.model.VibrationEffectDTO
 import kotlinx.coroutines.launch
-import javax.inject.Inject
 
-@HiltViewModel
-class ClientDataViewModel @Inject constructor(
+class ClientDataViewModel(
     private val repository: ClientDataRepository = ClientDataRepositoryImpl
 ) : ViewModel() {
 
@@ -53,13 +51,25 @@ class ClientDataViewModel @Inject constructor(
         }
     }
 
+    fun retryConnection() {
+        viewModelScope.launch {
+            repository.retryConnection()
+        }
+    }
+
     fun toggleListening(enable: Boolean) = repository.toggleListening(enable)
+
+    fun sendPrediction(label: String, confidence: Float, isCritical: Boolean, vibration: VibrationEffectDTO) {
+        viewModelScope.launch {
+            repository.sendPrediction(label, confidence, isCritical, vibration)
+        }
+    }
 }
 
 /**
  * A data holder describing a client event.
  */
 data class Event(
-    @StringRes val title: Int,
+    @param:StringRes val title: Int,
     val text: String
 )

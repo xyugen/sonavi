@@ -6,4 +6,5 @@
     -->
     <string name="start_listening">/start_listening</string>
     <string name="stop_listening">/stop_listening</string>
+    <string name="sound_detected">/sound_detected</string>
 </resources>

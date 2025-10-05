@@ -7,6 +7,9 @@ class Constants {
 
         const val MIC_AUDIO_PATH = "/mic_audio"
     }
+    object Vibration {
+        const val COOLDOWN_MS = 5000L
+    }
     object Capabilities {
         const val WEAR_CAPABILITY = "wear"
     }
