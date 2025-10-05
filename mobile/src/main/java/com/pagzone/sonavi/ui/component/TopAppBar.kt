@@ -8,6 +8,7 @@ import androidx.compose.foundation.layout.asPaddingValues
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.statusBars
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
@@ -35,7 +36,14 @@ fun TopAppBar(
         Box(
             modifier = Modifier.fillMaxWidth()
         ) {
-            // Centered title
+            // Logo
+            LogoDisplay(
+                modifier = Modifier
+                    .size(32.dp)
+                    .align(Alignment.CenterStart)
+            )
+
+            // Title
             Text(
                 text = title,
                 style = MaterialTheme.typography.titleLarge,
@@ -44,7 +52,7 @@ fun TopAppBar(
                 modifier = Modifier.align(Alignment.Center)
             )
 
-            // Theme toggle at end
+            // Theme toggle
             ThemeToggleButton(
                 modifier = Modifier.align(Alignment.CenterEnd)
             )
