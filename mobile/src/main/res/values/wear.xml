@@ -1,6 +1,1 @@
-<resources>
-    <string-array name="android_wear_capabilities" translatable="false">
-        <item>wear</item>
-        <item>mobile</item>
-    </string-array>
-</resources>
+<resources></resources>
