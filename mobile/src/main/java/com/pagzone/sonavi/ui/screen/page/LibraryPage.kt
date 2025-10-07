@@ -1143,7 +1143,7 @@ fun EditModalSheet(
                                 HelpCard(
                                     showHelp = showHelp,
                                     text = "Enable emergency SMS alerts to your contacts when this sound is detected." +
-                                            "A cooldown prevents spam during continuous detection."
+                                            " A cooldown prevents spam during continuous detection."
                                 )
                             }
 
@@ -1349,9 +1349,9 @@ fun EditModalSheet(
 
                             HelpCard(
                                 showHelp = showHelp,
-                                text = "Controls detection sensitivity. " +
-                                        "Lower values detect more easily but may increase false alerts. " +
-                                        "Higher values are stricter but may miss some sounds."
+                                text = "Controls detection sensitivity." +
+                                        " Lower values detect more easily but may increase false alerts." +
+                                        " Higher values are stricter but may miss some sounds."
                             )
                         }
                     }
@@ -1541,8 +1541,8 @@ fun EditModalSheet(
                             HelpCard(
                                 showHelp = showHelp,
                                 text = "Default: Uses a standard vibration pattern for this sound.\n" +
-                                        "Custom: Create a unique vibration rhythm. Each step is 200ms. " +
-                                        "Activate steps to build your pattern (max 4.8 seconds total)."
+                                        "Custom: Create a unique vibration rhythm. Each step is 200ms." +
+                                        " Activate steps to build your pattern (max 4.8 seconds total)."
                             )
                         }
                     }
