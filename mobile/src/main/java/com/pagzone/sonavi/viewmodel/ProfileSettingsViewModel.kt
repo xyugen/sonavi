@@ -5,6 +5,7 @@ import androidx.lifecycle.viewModelScope
 import com.pagzone.sonavi.data.repository.ProfileSettingsRepository
 import com.pagzone.sonavi.model.ProfileSettings
 import com.pagzone.sonavi.model.ProfileUiState
+import com.pagzone.sonavi.model.Settings
 import dagger.hilt.android.lifecycle.HiltViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -28,6 +29,14 @@ class ProfileSettingsViewModel @Inject constructor(
             scope = viewModelScope,
             started = SharingStarted.WhileSubscribed(5000),
             initialValue = ProfileSettings()
+        )
+
+    val settings: StateFlow<Settings> = profileSettingsRepository
+        .getSettings()
+        .stateIn(
+            scope = viewModelScope,
+            started = SharingStarted.WhileSubscribed(5000),
+            initialValue = Settings()
         )
 
     fun updateProfile(name: String, address: String?) {
@@ -73,6 +82,12 @@ class ProfileSettingsViewModel @Inject constructor(
                         error = exception.message ?: "Failed to update has current location"
                     )
                 }
+        }
+    }
+
+    fun updateShouldShowCriticalInfoDialog(shouldShowCriticalInfoDialog: Boolean) {
+        viewModelScope.launch {
+            profileSettingsRepository.updateShouldShowCriticalInfoDialog(shouldShowCriticalInfoDialog)
         }
     }
 }

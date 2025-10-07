@@ -49,6 +49,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -99,14 +100,17 @@ import com.pagzone.sonavi.ui.component.CustomSearchBar
 import com.pagzone.sonavi.ui.component.SoundFilterChips
 import com.pagzone.sonavi.ui.component.StepSequencer
 import com.pagzone.sonavi.ui.component.stepsToVibrationPattern
+import com.pagzone.sonavi.ui.theme.Amber50
 import com.pagzone.sonavi.util.Constants.Classifier.CONFIDENCE_THRESHOLD
 import com.pagzone.sonavi.util.Constants.SoundProfile.DEFAULT_VIBRATION_PATTERN
+import com.pagzone.sonavi.viewmodel.ProfileSettingsViewModel
 import com.pagzone.sonavi.viewmodel.SoundViewModel
 
 @Composable
 fun LibraryPage(
     modifier: Modifier = Modifier,
-    viewModel: SoundViewModel = hiltViewModel()
+    viewModel: SoundViewModel = hiltViewModel(),
+    profileSettingsViewModel: ProfileSettingsViewModel = hiltViewModel()
 ) {
     var selectedDeleteSound by remember { mutableStateOf<SoundProfile?>(null) }
     var selectedEditSound by remember { mutableStateOf<SoundProfile?>(null) }
@@ -232,6 +236,7 @@ fun LibraryPage(
                         .show()
                 },
                 onDismissRequest = { selectedEditSound = null },
+                profileSettingsViewModel = profileSettingsViewModel
             )
         }
 
@@ -868,6 +873,7 @@ fun EditModalSheet(
     soundProfile: SoundProfile,
     onSave: (SoundProfile) -> Unit,
     onDismissRequest: () -> Unit,
+    profileSettingsViewModel: ProfileSettingsViewModel
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var name by remember { mutableStateOf(soundProfile.displayName) }
@@ -875,6 +881,10 @@ fun EditModalSheet(
     var soundThreshold by remember { mutableFloatStateOf(soundProfile.threshold) }
     var vibrationPattern by remember { mutableStateOf(soundProfile.vibrationPattern) }
     var selectedCooldown by remember { mutableIntStateOf(soundProfile.emergencyCooldownMinutes) }
+    var showCriticalDialog by remember { mutableStateOf(false) }
+    var dontShowAgain by remember { mutableStateOf(false) }
+
+    val settings by profileSettingsViewModel.settings.collectAsStateWithLifecycle()
 
     val isDefaultVibrationPattern = soundProfile.vibrationPattern == DEFAULT_VIBRATION_PATTERN
     var selectedVibrationPattern by remember {
@@ -1091,7 +1101,13 @@ fun EditModalSheet(
 
                                 Switch(
                                     checked = isCriticalSoundEnabled,
-                                    onCheckedChange = { isCriticalSoundEnabled = it },
+                                    onCheckedChange = {
+                                        if (it) {
+                                            if (settings.shouldShowCriticalInfoDialog)
+                                                showCriticalDialog = true
+                                            else isCriticalSoundEnabled = true
+                                        } else isCriticalSoundEnabled = false
+                                    },
                                     modifier = Modifier.scale(switchScale),
                                     colors = SwitchDefaults.colors(
                                         checkedThumbColor = Color.White,
@@ -1553,6 +1569,70 @@ fun EditModalSheet(
                     }
                 }
             }
+        }
+
+        if (showCriticalDialog) {
+            AlertDialog(
+                onDismissRequest = { showCriticalDialog = false },
+                icon = {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.ic_triangle_alert),
+                        contentDescription = null,
+                        tint = Amber50
+                    )
+                },
+                title = {
+                    Text("Enable Critical Sound?")
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            text = "This will send automatic SMS alerts to your emergency contacts when this sound is detected.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+
+                        Text(
+                            text = "Please inform your contacts that they may receive automated safety alerts from your number.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { dontShowAgain = !dontShowAgain }
+                        ) {
+                            Checkbox(
+                                checked = dontShowAgain,
+                                onCheckedChange = { dontShowAgain = it }
+                            )
+                            Text(
+                                text = "Don't show again",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            if (dontShowAgain) {
+                                profileSettingsViewModel.updateShouldShowCriticalInfoDialog(false)
+                            }
+                            isCriticalSoundEnabled = true
+                            showCriticalDialog = false
+                        }
+                    ) {
+                        Text("Enable")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCriticalDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
         }
     }
 }
