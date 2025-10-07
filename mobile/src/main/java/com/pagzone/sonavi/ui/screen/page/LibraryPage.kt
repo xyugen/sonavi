@@ -49,6 +49,7 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
+import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -99,14 +100,17 @@ import com.pagzone.sonavi.ui.component.CustomSearchBar
 import com.pagzone.sonavi.ui.component.SoundFilterChips
 import com.pagzone.sonavi.ui.component.StepSequencer
 import com.pagzone.sonavi.ui.component.stepsToVibrationPattern
+import com.pagzone.sonavi.ui.theme.Amber50
 import com.pagzone.sonavi.util.Constants.Classifier.CONFIDENCE_THRESHOLD
 import com.pagzone.sonavi.util.Constants.SoundProfile.DEFAULT_VIBRATION_PATTERN
+import com.pagzone.sonavi.viewmodel.ProfileSettingsViewModel
 import com.pagzone.sonavi.viewmodel.SoundViewModel
 
 @Composable
 fun LibraryPage(
     modifier: Modifier = Modifier,
-    viewModel: SoundViewModel = hiltViewModel()
+    viewModel: SoundViewModel = hiltViewModel(),
+    profileSettingsViewModel: ProfileSettingsViewModel = hiltViewModel()
 ) {
     var selectedDeleteSound by remember { mutableStateOf<SoundProfile?>(null) }
     var selectedEditSound by remember { mutableStateOf<SoundProfile?>(null) }
@@ -232,6 +236,7 @@ fun LibraryPage(
                         .show()
                 },
                 onDismissRequest = { selectedEditSound = null },
+                profileSettingsViewModel = profileSettingsViewModel
             )
         }
 
@@ -868,6 +873,7 @@ fun EditModalSheet(
     soundProfile: SoundProfile,
     onSave: (SoundProfile) -> Unit,
     onDismissRequest: () -> Unit,
+    profileSettingsViewModel: ProfileSettingsViewModel
 ) {
     val sheetState = rememberModalBottomSheetState(skipPartiallyExpanded = true)
     var name by remember { mutableStateOf(soundProfile.displayName) }
@@ -875,6 +881,11 @@ fun EditModalSheet(
     var soundThreshold by remember { mutableFloatStateOf(soundProfile.threshold) }
     var vibrationPattern by remember { mutableStateOf(soundProfile.vibrationPattern) }
     var selectedCooldown by remember { mutableIntStateOf(soundProfile.emergencyCooldownMinutes) }
+    var showCriticalDialog by remember { mutableStateOf(false) }
+    var dontShowAgain by remember { mutableStateOf(false) }
+    var showHelp by remember { mutableStateOf(false) }
+
+    val settings by profileSettingsViewModel.settings.collectAsStateWithLifecycle()
 
     val isDefaultVibrationPattern = soundProfile.vibrationPattern == DEFAULT_VIBRATION_PATTERN
     var selectedVibrationPattern by remember {
@@ -938,18 +949,24 @@ fun EditModalSheet(
                             )
 
                             Surface(
-                                onClick = { /* Handle help action */ },
+                                onClick = { showHelp = !showHelp },
                                 shape = CircleShape,
-                                color = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
+                                color =
+                                    if (showHelp) MaterialTheme.colorScheme.error.copy(0.3f)
+                                    else MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f),
                                 modifier = Modifier.size(36.dp)
                             ) {
                                 Box(
                                     contentAlignment = Alignment.Center
                                 ) {
                                     Icon(
-                                        imageVector = ImageVector.vectorResource(R.drawable.ic_help_outline),
+                                        imageVector =
+                                            if (showHelp) ImageVector.vectorResource(R.drawable.ic_close)
+                                            else ImageVector.vectorResource(R.drawable.ic_help_outline),
                                         contentDescription = "Help",
-                                        tint = MaterialTheme.colorScheme.primary,
+                                        tint =
+                                            if (showHelp) MaterialTheme.colorScheme.error
+                                            else MaterialTheme.colorScheme.primary,
                                         modifier = Modifier.size(18.dp)
                                     )
                                 }
@@ -1037,6 +1054,13 @@ fun EditModalSheet(
                                     ),
                                 )
                             )
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            HelpCard(
+                                showHelp = showHelp,
+                                text = "Customize how this sound appears in your notifications and activity log."
+                            )
                         }
                     }
                 }
@@ -1052,55 +1076,74 @@ fun EditModalSheet(
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
                         Column {
-                            Row(
+                            Column(
                                 modifier = Modifier
                                     .fillMaxWidth()
-                                    .padding(20.dp),
-                                horizontalArrangement = Arrangement.SpaceBetween,
-                                verticalAlignment = Alignment.CenterVertically
+                                    .padding(20.dp)
                             ) {
                                 Row(
+                                    modifier = Modifier
+                                        .fillMaxWidth(),
+                                    horizontalArrangement = Arrangement.SpaceBetween,
                                     verticalAlignment = Alignment.CenterVertically
                                 ) {
-                                    Icon(
-                                        imageVector = if (isCriticalSoundEnabled)
-                                            ImageVector.vectorResource(R.drawable.ic_emergency_home_filled) else
-                                            ImageVector.vectorResource(R.drawable.ic_emergency_home),
-                                        contentDescription = null,
-                                        tint = if (isCriticalSoundEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                        modifier = Modifier.size(20.dp)
-                                    )
-
-                                    Spacer(modifier = Modifier.width(12.dp))
-
-                                    Column {
-                                        Text(
-                                            text = "Critical Sound",
-                                            style = MaterialTheme.typography.titleMedium,
-                                            fontWeight = FontWeight.Medium,
-                                            color = MaterialTheme.colorScheme.onSurface
+                                    Row(
+                                        verticalAlignment = Alignment.CenterVertically
+                                    ) {
+                                        Icon(
+                                            imageVector = if (isCriticalSoundEnabled)
+                                                ImageVector.vectorResource(R.drawable.ic_emergency_home_filled) else
+                                                ImageVector.vectorResource(R.drawable.ic_emergency_home),
+                                            contentDescription = null,
+                                            tint = if (isCriticalSoundEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
+                                            modifier = Modifier.size(20.dp)
                                         )
 
-                                        Text(
-                                            text = if (isCriticalSoundEnabled) "Enabled" else "Disabled",
-                                            style = MaterialTheme.typography.bodySmall,
-                                            color = MaterialTheme.colorScheme.onSurfaceVariant
-                                        )
+                                        Spacer(modifier = Modifier.width(12.dp))
+
+                                        Column {
+                                            Text(
+                                                text = "Critical Sound",
+                                                style = MaterialTheme.typography.titleMedium,
+                                                fontWeight = FontWeight.Medium,
+                                                color = MaterialTheme.colorScheme.onSurface
+                                            )
+
+                                            Text(
+                                                text = if (isCriticalSoundEnabled) "Enabled" else "Disabled",
+                                                style = MaterialTheme.typography.bodySmall,
+                                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                            )
+                                        }
                                     }
+
+                                    Switch(
+                                        checked = isCriticalSoundEnabled,
+                                        onCheckedChange = {
+                                            if (it) {
+                                                if (settings.shouldShowCriticalInfoDialog)
+                                                    showCriticalDialog = true
+                                                else isCriticalSoundEnabled = true
+                                            } else isCriticalSoundEnabled = false
+                                        },
+                                        modifier = Modifier.scale(switchScale),
+                                        colors = SwitchDefaults.colors(
+                                            checkedThumbColor = Color.White,
+                                            checkedTrackColor = MaterialTheme.colorScheme.primary,
+                                            uncheckedThumbColor = Color.White,
+                                            uncheckedTrackColor = MaterialTheme.colorScheme.outline.copy(
+                                                alpha = 0.5f
+                                            )
+                                        )
+                                    )
                                 }
 
-                                Switch(
-                                    checked = isCriticalSoundEnabled,
-                                    onCheckedChange = { isCriticalSoundEnabled = it },
-                                    modifier = Modifier.scale(switchScale),
-                                    colors = SwitchDefaults.colors(
-                                        checkedThumbColor = Color.White,
-                                        checkedTrackColor = MaterialTheme.colorScheme.primary,
-                                        uncheckedThumbColor = Color.White,
-                                        uncheckedTrackColor = MaterialTheme.colorScheme.outline.copy(
-                                            alpha = 0.5f
-                                        )
-                                    )
+                                Spacer(modifier = Modifier.height(12.dp))
+
+                                HelpCard(
+                                    showHelp = showHelp,
+                                    text = "Enable emergency SMS alerts to your contacts when this sound is detected." +
+                                            "A cooldown prevents spam during continuous detection."
                                 )
                             }
 
@@ -1301,6 +1344,15 @@ fun EditModalSheet(
                                     )
                                 }
                             }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            HelpCard(
+                                showHelp = showHelp,
+                                text = "Controls detection sensitivity. " +
+                                        "Lower values detect more easily but may increase false alerts. " +
+                                        "Higher values are stricter but may miss some sounds."
+                            )
                         }
                     }
                 }
@@ -1483,6 +1535,15 @@ fun EditModalSheet(
                                     )
                                 }
                             }
+
+                            Spacer(modifier = Modifier.height(12.dp))
+
+                            HelpCard(
+                                showHelp = showHelp,
+                                text = "Default: Uses a standard vibration pattern for this sound.\n" +
+                                        "Custom: Create a unique vibration rhythm. Each step is 200ms. " +
+                                        "Activate steps to build your pattern (max 4.8 seconds total)."
+                            )
                         }
                     }
                 }
@@ -1551,6 +1612,113 @@ fun EditModalSheet(
                             )
                         }
                     }
+                }
+            }
+        }
+
+        if (showCriticalDialog) {
+            AlertDialog(
+                onDismissRequest = { showCriticalDialog = false },
+                icon = {
+                    Icon(
+                        imageVector = ImageVector.vectorResource(R.drawable.ic_triangle_alert),
+                        contentDescription = null,
+                        tint = Amber50
+                    )
+                },
+                title = {
+                    Text("Enable Critical Sound?")
+                },
+                text = {
+                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
+                        Text(
+                            text = "This will send automatic SMS alerts to your emergency contacts when this sound is detected.",
+                            style = MaterialTheme.typography.bodyMedium
+                        )
+
+                        Text(
+                            text = "Please inform your contacts that they may receive automated safety alerts from your number.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Medium
+                        )
+
+                        Row(
+                            verticalAlignment = Alignment.CenterVertically,
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .clickable { dontShowAgain = !dontShowAgain }
+                        ) {
+                            Checkbox(
+                                checked = dontShowAgain,
+                                onCheckedChange = { dontShowAgain = it }
+                            )
+                            Text(
+                                text = "Don't show again",
+                                style = MaterialTheme.typography.bodySmall
+                            )
+                        }
+                    }
+                },
+                confirmButton = {
+                    TextButton(
+                        onClick = {
+                            if (dontShowAgain) {
+                                profileSettingsViewModel.updateShouldShowCriticalInfoDialog(false)
+                            }
+                            isCriticalSoundEnabled = true
+                            showCriticalDialog = false
+                        }
+                    ) {
+                        Text("Enable")
+                    }
+                },
+                dismissButton = {
+                    TextButton(onClick = { showCriticalDialog = false }) {
+                        Text("Cancel")
+                    }
+                }
+            )
+        }
+    }
+}
+
+@Composable
+fun HelpCard(
+    showHelp: Boolean,
+    text: String,
+    title: String = "Help",
+) {
+    if (showHelp) {
+        Card(
+            colors = CardDefaults.cardColors(
+                containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
+            ),
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Row(
+                modifier = Modifier.padding(12.dp),
+                horizontalArrangement = Arrangement.spacedBy(10.dp),
+                verticalAlignment = Alignment.Top
+            ) {
+                Icon(
+                    imageVector = ImageVector.vectorResource(R.drawable.ic_help_outline),
+                    contentDescription = "Help",
+                    tint = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier.size(18.dp)
+                )
+
+                Column(verticalArrangement = Arrangement.spacedBy(4.dp)) {
+                    Text(
+                        text = title,
+                        style = MaterialTheme.typography.labelMedium,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Text(
+                        text = text,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        lineHeight = 18.sp
+                    )
                 }
             }
         }
@@ -1854,7 +2022,7 @@ fun SoundCard(
 
                         CustomMenuItem(
                             text = "Delete",
-                            icon = R.drawable.ic_trash_x,
+                            icon = R.drawable.ic_trash,
                             onClick = {
                                 onMenuClick("delete")
                                 showMenu = false

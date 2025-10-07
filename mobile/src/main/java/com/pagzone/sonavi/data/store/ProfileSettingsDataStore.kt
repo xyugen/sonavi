@@ -7,9 +7,8 @@ import androidx.datastore.preferences.core.emptyPreferences
 import androidx.datastore.preferences.core.stringPreferencesKey
 import com.pagzone.sonavi.dataStore
 import com.pagzone.sonavi.model.ProfileSettings
-import com.pagzone.sonavi.util.Constants.DataStoreKeys.PROFILE_ADDRESS
-import com.pagzone.sonavi.util.Constants.DataStoreKeys.PROFILE_LOCATION
-import com.pagzone.sonavi.util.Constants.DataStoreKeys.PROFILE_NAME
+import com.pagzone.sonavi.model.Settings
+import com.pagzone.sonavi.util.Constants
 import dagger.hilt.android.qualifiers.ApplicationContext
 import kotlinx.coroutines.flow.Flow
 import kotlinx.coroutines.flow.catch
@@ -23,9 +22,13 @@ class ProfileSettingsDataStore @Inject constructor(
     @param:ApplicationContext private val context: Context
 ) {
     companion object {
-        private val PROFILE_NAME_KEY = stringPreferencesKey(PROFILE_NAME)
-        private val PROFILE_ADDRESS_KEY = stringPreferencesKey(PROFILE_ADDRESS)
-        private val PROFILE_LOCATION_KEY = booleanPreferencesKey(PROFILE_LOCATION)
+        private val PROFILE_NAME_KEY = stringPreferencesKey(Constants.DataStoreKeys.PROFILE_NAME)
+        private val PROFILE_ADDRESS_KEY =
+            stringPreferencesKey(Constants.DataStoreKeys.PROFILE_ADDRESS)
+        private val PROFILE_LOCATION_KEY =
+            booleanPreferencesKey(Constants.DataStoreKeys.PROFILE_LOCATION)
+        private val SHOULD_SHOW_CRITICAL_INFO_DIALOG =
+            booleanPreferencesKey(Constants.DataStoreKeys.CRITICAL_INFO_DIALOG)
     }
 
     private val dataStore = context.dataStore
@@ -46,6 +49,20 @@ class ProfileSettingsDataStore @Inject constructor(
             )
         }
 
+    val settingsFlow: Flow<Settings> = dataStore.data
+        .catch { exception ->
+            if (exception is IOException) {
+                emit(emptyPreferences())
+            } else {
+                throw exception
+            }
+        }
+        .map { preferences ->
+            Settings(
+                shouldShowCriticalInfoDialog = preferences[SHOULD_SHOW_CRITICAL_INFO_DIALOG] ?: true
+            )
+        }
+
     suspend fun updateProfile(name: String, address: String?) {
         dataStore.edit { preferences ->
             preferences[PROFILE_NAME_KEY] = name
@@ -53,21 +70,15 @@ class ProfileSettingsDataStore @Inject constructor(
         }
     }
 
-    suspend fun updateName(name: String) {
-        dataStore.edit { preferences ->
-            preferences[PROFILE_NAME_KEY] = name
-        }
-    }
-
-    suspend fun updateAddress(address: String) {
-        dataStore.edit { preferences ->
-            preferences[PROFILE_ADDRESS_KEY] = address
-        }
-    }
-
     suspend fun updateHasCurrentLocation(hasCurrentLocation: Boolean) {
         dataStore.edit { preferences ->
             preferences[PROFILE_LOCATION_KEY] = hasCurrentLocation
+        }
+    }
+
+    suspend fun updateShouldShowCriticalInfoDialog(shouldShowCriticalInfoDialog: Boolean) {
+        dataStore.edit { preferences ->
+            preferences[SHOULD_SHOW_CRITICAL_INFO_DIALOG] = shouldShowCriticalInfoDialog
         }
     }
 
