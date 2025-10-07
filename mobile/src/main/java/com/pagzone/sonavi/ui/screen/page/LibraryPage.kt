@@ -2022,7 +2022,7 @@ fun SoundCard(
 
                         CustomMenuItem(
                             text = "Delete",
-                            icon = R.drawable.ic_trash_x,
+                            icon = R.drawable.ic_trash,
                             onClick = {
                                 onMenuClick("delete")
                                 showMenu = false

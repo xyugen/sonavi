@@ -289,7 +289,10 @@ fun AddSoundPage(
                             onSoundCreated()
                         }
                     },
-                    onBack = { currentStep = RecordingStep.RECORD }
+                    onBack = { currentStep = RecordingStep.RECORD },
+                    onTrash = {
+                        resetAddSound()
+                    }
                 )
             }
         }
@@ -1096,7 +1099,8 @@ private fun PreviewAndSaveStep(
     soundName: String,
     recordingCount: Int,
     onSave: () -> Unit,
-    onBack: () -> Unit
+    onBack: () -> Unit,
+    onTrash: () -> Unit
 ) {
     Column(
         modifier = Modifier.fillMaxSize(),
@@ -1145,9 +1149,7 @@ private fun PreviewAndSaveStep(
                 Column {
                     Text(
                         text = "What happens next?",
-                        style = MaterialTheme.typography.titleSmall.copy(
-                            fontWeight = FontWeight.SemiBold
-                        ),
+                        style = MaterialTheme.typography.titleSmall,
                         color = MaterialTheme.colorScheme.onBackground
                     )
                     Spacer(Modifier.height(4.dp))
@@ -1164,38 +1166,63 @@ private fun PreviewAndSaveStep(
 
         Spacer(modifier = Modifier.weight(1f))
 
-        Row(
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            horizontalArrangement = Arrangement.spacedBy(12.dp)
+            verticalArrangement = Arrangement.spacedBy(12.dp)
         ) {
-            OutlinedButton(
-                onClick = onBack,
-                shape = RoundedCornerShape(12.dp)
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                Icon(
-                    Icons.AutoMirrored.Default.ArrowBack,
-                    null,
-                    modifier = Modifier.size(18.dp)
-                )
-                Spacer(Modifier.width(8.dp))
-                Text("Back", style = MaterialTheme.typography.labelLarge)
+                OutlinedButton(
+                    onClick = onBack,
+                    shape = RoundedCornerShape(12.dp)
+                ) {
+                    Icon(
+                        Icons.AutoMirrored.Default.ArrowBack,
+                        null,
+                        modifier = Modifier.size(18.dp)
+                    )
+                    Spacer(Modifier.width(8.dp))
+                    Text("Back", style = MaterialTheme.typography.labelLarge)
+                }
+
+                Button(
+                    onClick = onSave,
+                    modifier = Modifier.weight(1f),
+                    shape = RoundedCornerShape(12.dp),
+                    colors = ButtonDefaults.buttonColors(
+                        contentColor = MaterialTheme.colorScheme.onPrimary
+                    )
+                ) {
+                    Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp))
+                    Spacer(Modifier.width(8.dp))
+                    Text(
+                        "Create Sound",
+                        style = MaterialTheme.typography.labelLarge,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+                }
             }
 
-            Button(
-                onClick = onSave,
-                modifier = Modifier.weight(1f),
-                shape = RoundedCornerShape(12.dp),
-                colors = ButtonDefaults.buttonColors(
-                    contentColor = MaterialTheme.colorScheme.onPrimary
+            // Clear button
+            TextButton(
+                onClick = onTrash,
+                modifier = Modifier.fillMaxWidth(),
+                colors = ButtonDefaults.textButtonColors(
+                    contentColor = MaterialTheme.colorScheme.error
                 )
             ) {
-                Icon(Icons.Default.Check, null, modifier = Modifier.size(18.dp))
+                Icon(
+                    imageVector = ImageVector.vectorResource(R.drawable.ic_trash),
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp)
+                )
                 Spacer(Modifier.width(8.dp))
                 Text(
-                    "Create Sound",
-                    style = MaterialTheme.typography.labelLarge,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
+                    "Discard and Start Over",
+                    style = MaterialTheme.typography.labelMedium
                 )
             }
         }
