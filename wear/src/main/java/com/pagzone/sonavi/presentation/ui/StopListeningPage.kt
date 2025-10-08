@@ -32,6 +32,7 @@ import androidx.wear.compose.material.ChipDefaults
 import androidx.wear.compose.material.CompactChip
 import androidx.wear.compose.material3.*
 import com.pagzone.sonavi.R
+import com.pagzone.sonavi.presentation.theme.AppTheme
 
 @Composable
 fun StopListeningPage(onStop: () -> Unit) {
@@ -88,21 +89,21 @@ fun StopListeningPage(onStop: () -> Unit) {
             Icon(
                 imageVector = ImageVector.vectorResource(R.drawable.ic_graphic_eq),
                 contentDescription = "Listening",
-                tint = MaterialTheme.colorScheme.primary.copy(alpha = pulseAlpha),
+                tint = Color.White.copy(alpha = pulseAlpha),
                 modifier = Modifier.size(32.dp)
             )
         }
 
-        Spacer(modifier = Modifier.height(16.dp))
+        Spacer(modifier = Modifier.height(10.dp))
 
         Text(
             text = "Listening",
             style = MaterialTheme.typography.titleMedium,
-            color = MaterialTheme.colorScheme.primary.copy(alpha = pulseAlpha),
+            color = Color.White.copy(alpha = pulseAlpha),
             fontWeight = FontWeight.Medium
         )
 
-        Spacer(modifier = Modifier.height(20.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         CompactChip(
             label = {
@@ -113,8 +114,8 @@ fun StopListeningPage(onStop: () -> Unit) {
             },
             onClick = onStop,
             colors = ChipDefaults.chipColors(
-                backgroundColor = MaterialTheme.colorScheme.errorContainer,
-                contentColor = MaterialTheme.colorScheme.error
+                backgroundColor = AppTheme.colors.error,
+                contentColor = AppTheme.colors.onError
             ),
             modifier = Modifier.padding(horizontal = 8.dp)
         )
