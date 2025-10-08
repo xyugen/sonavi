@@ -38,7 +38,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
@@ -46,12 +45,17 @@ import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.text.style.TextOverflow
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
-import androidx.wear.compose.material3.*
+import androidx.wear.compose.material3.Icon
+import androidx.wear.compose.material3.LinearProgressIndicator
+import androidx.wear.compose.material3.MaterialTheme
+import androidx.wear.compose.material3.ProgressIndicatorDefaults
+import androidx.wear.compose.material3.Text
+import com.pagzone.sonavi.R
 import com.pagzone.sonavi.presentation.data.repository.WearRepositoryImpl.clearPrediction
 import com.pagzone.sonavi.presentation.model.SoundPrediction
+import com.pagzone.sonavi.presentation.theme.AppTheme
 import kotlinx.coroutines.delay
 import kotlin.math.roundToInt
-import com.pagzone.sonavi.R
 
 @Composable
 fun DetectedSoundsPage(detectedSound: SoundPrediction?) {
@@ -122,7 +126,7 @@ private fun DetectedSoundCard(detectedSound: SoundPrediction) {
             color = if (detectedSound.isCritical) {
                 MaterialTheme.colorScheme.onErrorContainer
             } else {
-                MaterialTheme.colorScheme.onSurface
+                AppTheme.colors.onSurface
             },
             textAlign = TextAlign.Center
         )
@@ -133,9 +137,9 @@ private fun DetectedSoundCard(detectedSound: SoundPrediction) {
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.Bold,
             color = if (detectedSound.isCritical) {
-                MaterialTheme.colorScheme.error
+                AppTheme.colors.error
             } else {
-                MaterialTheme.colorScheme.primary
+                AppTheme.colors.primary
             },
             textAlign = TextAlign.Center,
             maxLines = 2,
@@ -177,13 +181,13 @@ private fun CriticalSoundIndicator() {
             text = "CRITICAL ALERT",
             style = MaterialTheme.typography.labelSmall,
             fontWeight = FontWeight.Bold,
-            color = MaterialTheme.colorScheme.error.copy(alpha = alpha),
+            color = AppTheme.colors.error.copy(alpha = alpha),
             letterSpacing = 0.5.sp
         )
         Icon(
             imageVector = Icons.Filled.Warning,
             contentDescription = "Critical Alert",
-            tint = MaterialTheme.colorScheme.error.copy(alpha = alpha),
+            tint = AppTheme.colors.error.copy(alpha = alpha),
             modifier = Modifier.size(16.dp)
         )
     }
@@ -202,6 +206,17 @@ private fun SoundIcon(isCritical: Boolean) {
         label = "sound_scale"
     )
 
+    val bgCircleColor =
+        if (isCritical) AppTheme.colors.error.copy(0.3f)
+        else AppTheme.colors.primary.copy(0.3f)
+
+    val iconColor =
+        if (isCritical)
+            AppTheme.colors.error
+        else
+            AppTheme.colors.primary
+
+
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier.size(64.dp)
@@ -213,10 +228,7 @@ private fun SoundIcon(isCritical: Boolean) {
                 .scale(scale)
         ) {
             drawCircle(
-                color = if (isCritical)
-                    Color.Red.copy(alpha = 0.2f)
-                else
-                    Color.Blue.copy(alpha = 0.2f),
+                color = bgCircleColor,
                 radius = size.minDimension / 2
             )
         }
@@ -227,11 +239,7 @@ private fun SoundIcon(isCritical: Boolean) {
                 if (isCritical) ImageVector.vectorResource(R.drawable.ic_volume_up)
                 else ImageVector.vectorResource(R.drawable.ic_graphic_eq),
             contentDescription = "Sound Wave",
-            tint = if (isCritical) {
-                MaterialTheme.colorScheme.error
-            } else {
-                MaterialTheme.colorScheme.primary
-            },
+            tint = iconColor,
             modifier = Modifier.size(32.dp)
         )
     }
@@ -261,9 +269,9 @@ private fun ConfidenceSection(confidence: Float, isCritical: Boolean) {
                 .clip(RoundedCornerShape(8.dp)),
             colors = ProgressIndicatorDefaults.colors(
                 indicatorColor = if (isCritical) {
-                    MaterialTheme.colorScheme.error
+                    AppTheme.colors.error
                 } else {
-                    MaterialTheme.colorScheme.primary
+                    AppTheme.colors.primary
                 },
                 trackColor = MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
             )
@@ -288,9 +296,9 @@ private fun ConfidenceSection(confidence: Float, isCritical: Boolean) {
                 style = MaterialTheme.typography.bodySmall,
                 fontWeight = FontWeight.SemiBold,
                 color = if (isCritical) {
-                    MaterialTheme.colorScheme.error
+                    AppTheme.colors.error
                 } else {
-                    MaterialTheme.colorScheme.primary
+                    AppTheme.colors.primary
                 }
             )
         }
