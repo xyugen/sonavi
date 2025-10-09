@@ -55,6 +55,9 @@ import com.pagzone.sonavi.R
 import com.pagzone.sonavi.model.ClassificationResult
 import com.pagzone.sonavi.model.SoundStats
 import com.pagzone.sonavi.ui.component.RelativeTimeText
+import com.pagzone.sonavi.ui.theme.Amber50
+import com.pagzone.sonavi.ui.theme.Green50
+import com.pagzone.sonavi.ui.theme.Red50
 import com.pagzone.sonavi.viewmodel.ClassificationResultViewModel
 import com.pagzone.sonavi.viewmodel.ClientDataViewModel
 import kotlin.math.roundToInt
@@ -535,26 +538,28 @@ fun SoundHistoryItem(
         when {
             result.confidence >= 0.9 -> Triple(
                 "High",
-                Color(0xFF059669),
-                Color(0xFF059669).copy(alpha = 0.12f)
+                Green50,
+                Green50.copy(alpha = 0.12f)
             )
 
-            result.confidence >= 0.8 -> Triple(
+            result.confidence >= 0.75 -> Triple(
                 "Medium",
-                Color(0xFFD97706),
-                Color(0xFFD97706).copy(alpha = 0.12f)
+                Amber50,
+                Amber50.copy(alpha = 0.12f)
             )
 
             else -> Triple(
                 "Low",
-                Color(0xFFDC2626),
-                Color(0xFFDC2626).copy(alpha = 0.12f)
+                Red50,
+                Red50.copy(alpha = 0.12f)
             )
         }
     }
 
     val backgroundColor by animateColorAsState(
-        targetValue = if (isLatest) {
+        targetValue = if (result.isCritical) {
+            MaterialTheme.colorScheme.error.copy(alpha = 0.05f)
+        } else if (isLatest) {
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
         } else {
             MaterialTheme.colorScheme.surface
@@ -577,33 +582,65 @@ fun SoundHistoryItem(
             // Compact icon
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                color =
+                    if (result.isCritical) MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+                    else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                 modifier = Modifier.size(36.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = ImageVector.vectorResource(R.drawable.ic_audio_lines),
+                        imageVector =
+                            if (result.isCritical) ImageVector.vectorResource(R.drawable.ic_emergency_home_filled)
+                            else ImageVector.vectorResource(R.drawable.ic_audio_lines),
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint =
+                            if (result.isCritical) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(18.dp)
                     )
                 }
             }
 
-            // Content - takes available space
+            // Content
             Column(
                 modifier = Modifier.weight(1f, fill = true),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                // Sound label - will ellipsize if too long
-                Text(
-                    text = result.label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                // Time and confidence row
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Sound label
+                    Text(
+                        text = result.label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    if (result.isCritical) {
+                        Box(
+                            modifier = Modifier
+                                .size(2.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                    CircleShape
+                                )
+                        )
+
+                        Text(
+                            text = "Critical",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Normal,
+                            color = MaterialTheme.colorScheme.error,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
 
                 // Time and confidence row
                 Row(
