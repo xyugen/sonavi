@@ -389,7 +389,7 @@ private fun StatsOverviewCard(stats: SoundStats) {
     ) {
         // Header
         Text(
-            text = "Today's Activity",
+            text = "Overview",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface
