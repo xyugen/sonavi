@@ -54,7 +54,7 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pagzone.sonavi.R
 import com.pagzone.sonavi.model.ClassificationResult
 import com.pagzone.sonavi.model.SoundStats
-import com.pagzone.sonavi.util.Helper.Companion.formatTimestamp
+import com.pagzone.sonavi.ui.component.RelativeTimeText
 import com.pagzone.sonavi.viewmodel.ClassificationResultViewModel
 import com.pagzone.sonavi.viewmodel.ClientDataViewModel
 import kotlin.math.roundToInt
@@ -182,7 +182,9 @@ private fun ConnectionStatusCard(
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(14.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(14.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -551,10 +553,6 @@ fun SoundHistoryItem(
         }
     }
 
-    val formattedDate = remember(result.timestamp) {
-        formatTimestamp(result.timestamp)
-    }
-
     val backgroundColor by animateColorAsState(
         targetValue = if (isLatest) {
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
@@ -612,8 +610,8 @@ fun SoundHistoryItem(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = formattedDate,
+                    RelativeTimeText(
+                        timestamp = result.timestamp,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )
