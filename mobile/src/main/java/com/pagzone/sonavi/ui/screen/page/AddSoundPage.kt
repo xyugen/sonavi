@@ -426,7 +426,7 @@ private fun AudioSamplesStep(
         // Info card
         InfoCard(
             text = "Record or upload audio of the same sound from different angles or distances. " +
-                    "Accepts MP3, M4A, WAV, OGG, FLAC (max 10 seconds)."
+                    "Upload accepts different audio file types (min 1 second, max 10 seconds)."
         )
 
         // Visual waveform feedback during recording
@@ -1262,7 +1262,7 @@ fun HelpDialog(onDismiss: () -> Unit) {
             ) {
                 Text(
                     text = "Works best with:",
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                     style = MaterialTheme.typography.bodyMedium
                 )
 
@@ -1274,12 +1274,11 @@ fun HelpDialog(onDismiss: () -> Unit) {
 
                 Text(
                     text = "Recording tips:",
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                     style = MaterialTheme.typography.bodyMedium
                 )
 
                 BulletPoint("Add 3-5 samples from different angles/distances")
-                BulletPoint("Record in the actual location you'll use it")
                 BulletPoint("Make sure sound is clear and loud enough")
                 BulletPoint("Minimize background noise")
 
@@ -1287,12 +1286,22 @@ fun HelpDialog(onDismiss: () -> Unit) {
 
                 Text(
                     text = "Upload options:",
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                     style = MaterialTheme.typography.bodyMedium
                 )
 
+                Spacer(Modifier.height(4.dp))
+
                 BulletPoint("Accepts MP3, M4A, WAV, OGG, FLAC")
-                BulletPoint("Maximum 10 seconds per file")
+
+                Text(
+                    text = "Duration:",
+                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                BulletPoint("Minimum of 1 second per sample")
+                BulletPoint("Maximum of 10 seconds per sample")
 
                 Spacer(Modifier.height(4.dp))
 
