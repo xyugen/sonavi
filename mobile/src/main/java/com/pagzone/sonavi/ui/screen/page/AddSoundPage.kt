@@ -200,6 +200,11 @@ fun AddSoundPage(
 
     fun resetAddSound() {
         soundName = ""
+        isCriticalSoundEnabled = false
+        soundThreshold = CUSTOM_CONFIDENCE_THRESHOLD
+        selectedCooldown = DEFAULT_EMERGENCY_COOLDOWN_IN_MINUTES
+        vibrationPattern = DEFAULT_VIBRATION_PATTERN
+        selectedVibrationPattern = "Default"
         currentStep = RecordingStep.NAME
         samples = emptyList()
         isRecording = false
