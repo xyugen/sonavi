@@ -36,6 +36,7 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
@@ -82,6 +83,7 @@ import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pagzone.sonavi.R
+import com.pagzone.sonavi.domain.AudioPlayer
 import com.pagzone.sonavi.domain.AudioQualityAnalyzer
 import com.pagzone.sonavi.domain.RealtimeAudioQualityAnalyzer
 import com.pagzone.sonavi.model.AudioSample
@@ -122,7 +124,7 @@ fun AddSoundPage(
     var soundThreshold by remember { mutableFloatStateOf(CUSTOM_CONFIDENCE_THRESHOLD) }
     var isCriticalSoundEnabled by remember { mutableStateOf(false) }
     var selectedCooldown by remember { mutableIntStateOf(DEFAULT_EMERGENCY_COOLDOWN_IN_MINUTES) }
-    var vibrationPattern by remember { mutableStateOf(emptyList<Long>()) }
+    var vibrationPattern by remember { mutableStateOf(DEFAULT_VIBRATION_PATTERN) }
     var selectedVibrationPattern by remember {
         mutableStateOf("Default")
     }
@@ -134,6 +136,9 @@ fun AddSoundPage(
     var showHelpDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var currentAudioAmplitude by remember { mutableFloatStateOf(0f) }
+
+    val audioPlayer = remember { AudioPlayer() }
+    var currentlyPlayingId by remember { mutableStateOf<String?>(null) }
 
     val settings by profileSettingsViewModel.settings.collectAsStateWithLifecycle()
 
@@ -198,6 +203,15 @@ fun AddSoundPage(
             }
         } else {
             recordingDuration = 0
+        }
+    }
+
+    DisposableEffect(Unit) {
+        onDispose {
+            if (audioRecorder.isRecording()) {
+                audioRecorder.stopRecording()
+            }
+            audioPlayer.stopPlayback()
         }
     }
 
@@ -281,8 +295,29 @@ fun AddSoundPage(
                 AudioSamplesStep(
                     samples = samples,
                     audioRecorder = audioRecorder,
+                    currentlyPlayingId = currentlyPlayingId,
+                    onPlaySample = { sampleId ->
+                        val sample = samples.find { it.id == sampleId }
+                        sample?.let {
+                            currentlyPlayingId = sampleId
+                            coroutineScope.launch {
+                                // Both Recording and Upload now have FloatArray data
+                                val audioData = when (val source = it.source) {
+                                    is AudioSource.Recording -> source.data
+                                    is AudioSource.Upload -> source.data
+                                }
+
+                                audioPlayer.playAudio(audioData) {
+                                    currentlyPlayingId = null
+                                }
+                            }
+                        }
+                    },
+                    onStopPlayback = {
+                        audioPlayer.stopPlayback()
+                        currentlyPlayingId = null
+                    },
                     isRecording = isRecording,
-                    recordingDuration = recordingDuration,
                     currentAmplitude = currentAudioAmplitude,
                     onStartRecording = {
                         val success = audioRecorder.startRecording { error ->
@@ -439,8 +474,10 @@ fun StepProgressIndicator(
 private fun AudioSamplesStep(
     samples: List<AudioSample>,
     audioRecorder: AudioRecorder,
+    currentlyPlayingId: String?,
+    onPlaySample: (String) -> Unit,
+    onStopPlayback: () -> Unit,
     isRecording: Boolean,
-    recordingDuration: Int,
     currentAmplitude: Float,
     onStartRecording: () -> Unit,
     onStopRecording: () -> Unit,
@@ -455,7 +492,7 @@ private fun AudioSamplesStep(
 
     LaunchedEffect(isRecording) {
         if (isRecording) {
-            while (isRecording) {
+            while (true) {
                 val currentBuffer = audioRecorder.getCurrentBuffer()
                 realtimeQuality = realtimeAnalyzer.analyzeBuffer(currentBuffer)
                 delay(500)
@@ -508,14 +545,18 @@ private fun AudioSamplesStep(
         LazyColumn(
             modifier = Modifier
                 .fillMaxWidth()
-                .heightIn(max = 300.dp), // ensures visibility
+                .heightIn(max = 300.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             itemsIndexed(samples) { index, sample ->
                 AudioSampleItem(
                     index = index + 1,
                     sample = sample,
-                    onDelete = { onDeleteSample(sample.id) }
+                    isPlaying = currentlyPlayingId == sample.id,
+                    onPlay = { onPlaySample(sample.id) },
+                    onStop = onStopPlayback,
+                    onDelete = { onDeleteSample(sample.id) },
+                    enabled = !isRecording  // Disable during recording
                 )
             }
         }
@@ -734,8 +775,8 @@ private fun LevelIndicator(
     label: String,
     value: Float,
     max: Float,
-    isWarning: Boolean = false,
-    modifier: Modifier = Modifier
+    modifier: Modifier = Modifier,
+    isWarning: Boolean = false
 ) {
     Column(
         modifier = modifier,
@@ -808,7 +849,11 @@ private fun InfoCard(text: String) {
 private fun AudioSampleItem(
     index: Int,
     sample: AudioSample,
-    onDelete: () -> Unit
+    isPlaying: Boolean,
+    onPlay: () -> Unit,
+    onStop: () -> Unit,
+    onDelete: () -> Unit,
+    enabled: Boolean = true
 ) {
     val source = sample.source
     val duration = sample.quality?.duration
@@ -827,6 +872,32 @@ private fun AudioSampleItem(
                 .padding(horizontal = 12.dp, vertical = 8.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // Play/Stop button
+            IconButton(
+                onClick = if (isPlaying) onStop else onPlay,
+                enabled = enabled,
+                modifier = Modifier.size(40.dp),
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor =
+                        if (isPlaying) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.primaryContainer,
+                    contentColor =
+                        if (isPlaying) MaterialTheme.colorScheme.onError
+                        else MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            ) {
+                Icon(
+                    imageVector = if (isPlaying)
+                        ImageVector.vectorResource(R.drawable.ic_stop)
+                    else
+                        Icons.Filled.PlayArrow,
+                    contentDescription = if (isPlaying) "Stop" else "Play",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Spacer(Modifier.width(8.dp))
+
             // Icon + Info
             Icon(
                 imageVector = when (source) {
@@ -873,18 +944,19 @@ private fun AudioSampleItem(
             // Delete button
             IconButton(
                 onClick = onDelete,
+                enabled = !isPlaying, // Disable delete while playing
                 modifier = Modifier.size(32.dp)
             ) {
                 Icon(
                     imageVector = Icons.Default.Delete,
                     contentDescription = "Delete",
-                    tint = MaterialTheme.colorScheme.error
+                    tint = if (!isPlaying) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                 )
             }
         }
     }
 }
-
 
 @Composable
 private fun StepIndicatorItem(
@@ -1104,63 +1176,6 @@ private fun SoundDetailsStep(
 }
 
 @Composable
-private fun AudioVisualizerCard(
-    amplitude: Float,
-    duration: Int
-) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(12.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.error)
-                    )
-                    Text(
-                        text = "Recording",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                Text(
-                    text = "${duration}s / 10s",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            // Waveform visualization
-            WaveformVisualizer(
-                amplitude = amplitude,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp)
-            )
-        }
-    }
-}
-
-@Composable
 private fun WaveformVisualizer(
     amplitude: Float,
     modifier: Modifier = Modifier
@@ -1188,26 +1203,6 @@ private fun WaveformVisualizer(
                 cornerRadius = CornerRadius(2f, 2f)
             )
         }
-    }
-}
-
-@Composable
-private fun InfoChip(icon: ImageVector, text: String) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(14.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
     }
 }
 
