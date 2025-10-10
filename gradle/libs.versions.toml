@@ -5,6 +5,7 @@ datastorePreferences = "1.1.7"
 gson = "2.13.2"
 hiltAndroid = "2.57.1"
 hiltNavigationFragment = "1.2.0"
+jtransforms = "3.1"
 kotlin = "2.2.0"
 kotlin_speech_features = "1.0.0"
 ksp = "2.2.0-2.0.2"
@@ -47,6 +48,7 @@ core = { module = "be.tarsos.dsp:core", version.ref = "core" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hiltAndroid" }
 hilt-android-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hiltAndroid" }
+jtransforms = { module = "com.github.wendykierp:JTransforms", version.ref = "jtransforms" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }

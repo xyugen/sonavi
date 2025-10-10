@@ -44,6 +44,12 @@ class AudioRecorder(private val context: Context) {
         return (rms * 5f).coerceIn(0f, 1f)
     }
 
+    fun getCurrentBuffer(): FloatArray {
+        synchronized(samplesLock) {
+            return recentSamples.map { it / 32768f }.toFloatArray()
+        }
+    }
+
     fun startRecording(onError: (String) -> Unit = {}): Boolean {
         // Check permission first
         if (ActivityCompat.checkSelfPermission(

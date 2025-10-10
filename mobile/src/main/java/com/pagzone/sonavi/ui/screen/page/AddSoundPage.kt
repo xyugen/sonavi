@@ -8,10 +8,8 @@ import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -43,13 +41,14 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -84,14 +83,18 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pagzone.sonavi.R
 import com.pagzone.sonavi.domain.AudioQualityAnalyzer
+import com.pagzone.sonavi.domain.RealtimeAudioQualityAnalyzer
 import com.pagzone.sonavi.model.AudioSample
 import com.pagzone.sonavi.model.AudioSource
-import com.pagzone.sonavi.model.QualityLevel
+import com.pagzone.sonavi.model.RealtimeQuality
 import com.pagzone.sonavi.model.Settings
 import com.pagzone.sonavi.ui.component.CriticalToggle
 import com.pagzone.sonavi.ui.component.ThresholdSlider
 import com.pagzone.sonavi.ui.component.VibrationPattern
 import com.pagzone.sonavi.ui.component.VibrationPlayer
+import com.pagzone.sonavi.ui.theme.Amber50
+import com.pagzone.sonavi.ui.theme.Lime50
+import com.pagzone.sonavi.ui.theme.Sky50
 import com.pagzone.sonavi.util.AudioRecorder
 import com.pagzone.sonavi.util.Constants.Classifier.CUSTOM_CONFIDENCE_THRESHOLD
 import com.pagzone.sonavi.util.Constants.SoundProfile.DEFAULT_EMERGENCY_COOLDOWN_IN_MINUTES
@@ -277,6 +280,7 @@ fun AddSoundPage(
             RecordingStep.RECORD -> {
                 AudioSamplesStep(
                     samples = samples,
+                    audioRecorder = audioRecorder,
                     isRecording = isRecording,
                     recordingDuration = recordingDuration,
                     currentAmplitude = currentAudioAmplitude,
@@ -434,6 +438,7 @@ fun StepProgressIndicator(
 @Composable
 private fun AudioSamplesStep(
     samples: List<AudioSample>,
+    audioRecorder: AudioRecorder,
     isRecording: Boolean,
     recordingDuration: Int,
     currentAmplitude: Float,
@@ -445,6 +450,19 @@ private fun AudioSamplesStep(
     onNext: () -> Unit,
     onBack: () -> Unit
 ) {
+    val realtimeAnalyzer = remember { RealtimeAudioQualityAnalyzer() }
+    var realtimeQuality by remember { mutableStateOf<RealtimeQuality?>(null) }
+
+    LaunchedEffect(isRecording) {
+        if (isRecording) {
+            while (isRecording) {
+                val currentBuffer = audioRecorder.getCurrentBuffer()
+                realtimeQuality = realtimeAnalyzer.analyzeBuffer(currentBuffer)
+                delay(500)
+            }
+        }
+    }
+
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -486,25 +504,11 @@ private fun AudioSamplesStep(
             }
         }
 
-        // Info card
-        InfoCard(
-            text = "Record or upload audio of the same sound from different angles or distances. " +
-                    "Upload accepts different audio file types (min 1 second, max 10 seconds)."
-        )
-
-        // Visual waveform feedback during recording
-        if (isRecording) {
-            AudioVisualizerCard(
-                amplitude = currentAmplitude,
-                duration = recordingDuration
-            )
-        }
-
         // Sample list
         LazyColumn(
             modifier = Modifier
-                .weight(1f)
-                .heightIn(min = 200.dp),
+                .fillMaxWidth()
+                .heightIn(max = 300.dp), // ensures visibility
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             itemsIndexed(samples) { index, sample ->
@@ -514,13 +518,20 @@ private fun AudioSamplesStep(
                     onDelete = { onDeleteSample(sample.id) }
                 )
             }
+        }
 
-            // Show placeholders only if less than 3
-            if (samples.size < 3) {
-                items(3 - samples.size) { index ->
-                    PlaceholderSampleItem(index = samples.size + index + 1)
-                }
-            }
+        // Info card
+        InfoCard(
+            text = "Record or upload audio of the same sound from different angles or distances. " +
+                    "Upload accepts different audio file types (min 1 second, max 10 seconds)."
+        )
+
+        // REAL-TIME FEEDBACK (during recording)
+        if (isRecording && realtimeQuality != null) {
+            RealtimeFeedbackCard(
+                quality = realtimeQuality!!,
+                amplitude = currentAmplitude
+            )
         }
 
         // Action buttons (Record and Upload)
@@ -595,6 +606,177 @@ private fun AudioSamplesStep(
 }
 
 @Composable
+fun RealtimeFeedbackCard(
+    quality: RealtimeQuality,
+    amplitude: Float
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Header with status
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.error)
+                    )
+                    Text(
+                        text = "Recording",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // Status icon
+                Icon(
+                    imageVector = when {
+                        quality.canUse -> Icons.Default.Check
+                        quality.isPeaking -> ImageVector.vectorResource(R.drawable.ic_triangle_alert)
+                        quality.isQuiet -> ImageVector.vectorResource(R.drawable.ic_volume_off)
+                        quality.isNoisy -> ImageVector.vectorResource(R.drawable.ic_audio_lines)
+                        else -> Icons.Default.Info
+                    },
+                    contentDescription = null,
+                    tint = when {
+                        quality.canUse -> Lime50
+                        else -> Color(0xFFFFC107)
+                    },
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            // Waveform visualization
+            WaveformVisualizer(
+                amplitude = amplitude,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+            )
+
+            // Audio levels display
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                LevelIndicator(
+                    label = "Quality",
+                    value = (quality.snr / 40f).coerceIn(0f, 1f) * 100,
+                    max = 100f,
+                    modifier = Modifier.weight(1f)
+                )
+
+                LevelIndicator(
+                    label = "Loudness",
+                    value = (quality.rmsLevel / 0.3f).coerceIn(0f, 1f) * 100,
+                    max = 100f,
+                    isWarning = quality.isPeaking,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // Suggestion text
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = when {
+                            quality.canUse -> Lime50.copy(alpha = 0.1f)
+                            quality.isPeaking -> Amber50.copy(alpha = 0.1f)
+                            quality.isQuiet -> Amber50.copy(alpha = 0.1f)
+                            else -> Sky50.copy(alpha = 0.1f)
+                        },
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = when {
+                        quality.canUse -> Icons.Default.Check
+                        else -> Icons.Default.Info
+                    },
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = when {
+                        quality.canUse -> Lime50
+                        else -> Color(0xFFFFC107)
+                    }
+                )
+                Text(
+                    text = quality.suggestion,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LevelIndicator(
+    label: String,
+    value: Float,
+    max: Float,
+    isWarning: Boolean = false,
+    modifier: Modifier = Modifier
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "%.2f".format(value),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        LinearProgressIndicator(
+            progress = { (value / max).coerceIn(0f, 1f) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp)),
+            color = when {
+                isWarning -> Amber50
+                value < max * 0.3f -> Sky50
+                value < max * 0.7f -> Lime50
+                else -> Color(0xFFFFC107)
+            },
+            trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
+        )
+    }
+}
+
+@Composable
 private fun InfoCard(text: String) {
     Card(
         colors = CardDefaults.cardColors(
@@ -629,98 +811,80 @@ private fun AudioSampleItem(
     onDelete: () -> Unit
 ) {
     val source = sample.source
-    val quality = sample.quality
+    val duration = sample.quality?.duration
 
     Card(
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = when (quality?.quality) {
-                QualityLevel.EXCELLENT -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                QualityLevel.GOOD -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                QualityLevel.FAIR -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
-                QualityLevel.POOR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                null -> MaterialTheme.colorScheme.surfaceVariant
-            }
-        )
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+        ),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Header row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // Icon + Info
+            Icon(
+                imageVector = when (source) {
+                    is AudioSource.Recording -> ImageVector.vectorResource(R.drawable.ic_mic_filled)
+                    is AudioSource.Upload -> ImageVector.vectorResource(R.drawable.ic_upload_file)
+                },
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+
+            Spacer(Modifier.width(8.dp))
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Icon(
-                        imageVector = when (source) {
-                            is AudioSource.Recording -> ImageVector.vectorResource(R.drawable.ic_mic_filled)
-                            is AudioSource.Upload -> ImageVector.vectorResource(R.drawable.ic_upload_file)
-                        },
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
+                    Text(
+                        text = "Sample $index",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                    Column {
-                        Text(
-                            text = "Sample $index",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
-                        if (source is AudioSource.Upload) {
-                            Text(
-                                text = source.fileName,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
+                    Text(
+                        text = "($duration seconds)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.error
+                if (source is AudioSource.Upload) {
+                    Text(
+                        text = source.fileName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
 
-            // Quality info
-            if (quality != null) {
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                    thickness = 1.dp
+            // Delete button
+            IconButton(
+                onClick = onDelete,
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    tint = MaterialTheme.colorScheme.error
                 )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Duration
-                    InfoChip(
-                        icon = ImageVector.vectorResource(R.drawable.ic_schedule),
-                        text = "${"%.1f".format(quality.duration)}s"
-                    )
-
-                    // Quality level
-                    QualityChip(quality = quality.quality)
-
-                    // Signal strength
-                    SignalStrengthIndicator(rms = quality.rmsLevel)
-                }
             }
         }
     }
 }
+
 
 @Composable
 private fun StepIndicatorItem(
@@ -1028,39 +1192,6 @@ private fun WaveformVisualizer(
 }
 
 @Composable
-private fun PlaceholderSampleItem(index: Int) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .border(
-                        2.dp,
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                        CircleShape
-                    )
-            )
-            Text(
-                text = "Sample $index",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
 private fun InfoChip(icon: ImageVector, text: String) {
     Row(
         horizontalArrangement = Arrangement.spacedBy(4.dp),
@@ -1077,65 +1208,6 @@ private fun InfoChip(icon: ImageVector, text: String) {
             style = MaterialTheme.typography.bodySmall,
             color = MaterialTheme.colorScheme.onSurfaceVariant
         )
-    }
-}
-
-@Composable
-private fun QualityChip(quality: QualityLevel) {
-    val (text, color) = when (quality) {
-        QualityLevel.EXCELLENT -> "Excellent" to Color(0xFF4CAF50)
-        QualityLevel.GOOD -> "Good" to Color(0xFF8BC34A)
-        QualityLevel.FAIR -> "Fair" to Color(0xFFFFC107)
-        QualityLevel.POOR -> "Poor" to Color(0xFFF44336)
-    }
-
-    Surface(
-        shape = RoundedCornerShape(4.dp),
-        color = color.copy(alpha = 0.2f)
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            color = color,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            fontWeight = FontWeight.Medium
-        )
-    }
-}
-
-@Composable
-private fun SignalStrengthIndicator(rms: Float) {
-    val bars = when {
-        rms > 0.15f -> 5
-        rms > 0.10f -> 4
-        rms > 0.06f -> 3
-        rms > 0.03f -> 2
-        else -> 1
-    }
-
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        verticalAlignment = Alignment.Bottom
-    ) {
-        repeat(5) { index ->
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .height(4.dp + (index * 2).dp)
-                    .background(
-                        color = if (index < bars) {
-                            when {
-                                bars >= 4 -> Color(0xFF4CAF50)
-                                bars >= 3 -> Color(0xFFFFC107)
-                                else -> Color(0xFFF44336)
-                            }
-                        } else {
-                            MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                        },
-                        shape = RoundedCornerShape(1.dp)
-                    )
-            )
-        }
     }
 }
 
