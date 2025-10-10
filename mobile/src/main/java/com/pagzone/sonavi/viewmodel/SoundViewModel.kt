@@ -14,6 +14,8 @@ import com.pagzone.sonavi.model.AudioSample
 import com.pagzone.sonavi.model.AudioSource
 import com.pagzone.sonavi.model.SoundProfile
 import com.pagzone.sonavi.model.UiState
+import com.pagzone.sonavi.util.Constants.SoundProfile.DEFAULT_EMERGENCY_COOLDOWN_IN_MINUTES
+import com.pagzone.sonavi.util.Constants.SoundProfile.DEFAULT_VIBRATION_PATTERN
 import com.pagzone.sonavi.util.Helper.Companion.averageEmbeddings
 import com.pagzone.sonavi.util.Helper.Companion.calculateEmbeddingQuality
 import com.pagzone.sonavi.util.Helper.Companion.normalizeEmbedding
@@ -312,7 +314,11 @@ class SoundViewModel @Inject constructor(
 
     fun createCustomSound(
         name: String,
-        samples: List<AudioSample>
+        samples: List<AudioSample>,
+        threshold: Float = 0.80f,
+        isCritical: Boolean = false,
+        vibrationPattern: List<Long> = DEFAULT_VIBRATION_PATTERN,
+        emergencyCooldownMinutes: Int = DEFAULT_EMERGENCY_COOLDOWN_IN_MINUTES
     ) {
         viewModelScope.launch {
             try {
@@ -342,19 +348,15 @@ class SoundViewModel @Inject constructor(
                 // Store as JSON
                 val embeddingJson = Gson().toJson(normalizedEmbedding)
 
-                // Determine threshold based on consistency
-                val threshold = when {
-                    quality.second > 0.80f -> 0.80f // Good consistency
-                    quality.second > 0.70f -> 0.75f // Fair consistency -> lenient
-                    else -> 0.70f // Poor consistency -> very lenient
-                }
-
                 val customSound = SoundProfile(
                     name = name,
                     displayName = name,
                     isBuiltIn = false,
                     mfccEmbedding = embeddingJson,
-                    threshold = threshold
+                    threshold = threshold,
+                    isCritical = isCritical,
+                    vibrationPattern = vibrationPattern,
+                    emergencyCooldownMinutes = emergencyCooldownMinutes
                 )
 
                 repository.addCustomSound(customSound)

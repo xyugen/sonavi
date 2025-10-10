@@ -113,5 +113,67 @@ class Helper {
                 null
             }
         }
+
+        fun stepsToVibrationPattern(steps: List<Boolean>, stepDurationMs: Long): LongArray {
+            if (steps.isEmpty()) return longArrayOf(0L)
+
+            val pattern = buildList {
+                var currentState = steps.first()
+                var duration = 0L
+
+                for (step in steps) {
+                    if (step == currentState) {
+                        duration += stepDurationMs
+                    } else {
+                        add(duration)
+                        currentState = step
+                        duration = stepDurationMs
+                    }
+                }
+                add(duration)
+            }
+
+            return if (steps.first()) {
+                longArrayOf(0L, *pattern.toLongArray())
+            } else {
+                pattern.toLongArray()
+            }
+        }
+
+        fun vibrationPatternToSteps(
+            pattern: List<Long>,
+            stepDurationMs: Long,
+            maxSteps: Int = 25
+        ): List<Boolean> {
+            if (pattern.isEmpty()) return List(maxSteps) { false }
+
+            val steps = mutableListOf<Boolean>()
+            var currentState = false
+
+            val cleanPattern = if (pattern.first() == 0L && pattern.size > 1) {
+                currentState = true
+                pattern.drop(1)
+            } else {
+                pattern
+            }
+
+            for (duration in cleanPattern) {
+                val stepCount = (duration / stepDurationMs).toInt()
+
+                repeat(stepCount.coerceAtMost(maxSteps - steps.size)) {
+                    steps.add(currentState)
+                }
+
+                if (steps.size >= maxSteps) break
+
+                currentState = !currentState
+            }
+
+            while (steps.size < maxSteps) {
+                steps.add(false)
+            }
+
+            return steps.take(maxSteps)
+        }
     }
 }

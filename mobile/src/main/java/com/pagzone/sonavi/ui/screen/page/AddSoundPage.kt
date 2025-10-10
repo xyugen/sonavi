@@ -81,21 +81,34 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pagzone.sonavi.R
 import com.pagzone.sonavi.domain.AudioQualityAnalyzer
 import com.pagzone.sonavi.model.AudioSample
 import com.pagzone.sonavi.model.AudioSource
 import com.pagzone.sonavi.model.QualityLevel
+import com.pagzone.sonavi.model.Settings
+import com.pagzone.sonavi.ui.component.CriticalToggle
+import com.pagzone.sonavi.ui.component.ThresholdSlider
+import com.pagzone.sonavi.ui.component.VibrationPattern
+import com.pagzone.sonavi.ui.component.VibrationPlayer
 import com.pagzone.sonavi.util.AudioRecorder
+import com.pagzone.sonavi.util.Constants.Classifier.CUSTOM_CONFIDENCE_THRESHOLD
+import com.pagzone.sonavi.util.Constants.SoundProfile.DEFAULT_EMERGENCY_COOLDOWN_IN_MINUTES
+import com.pagzone.sonavi.util.Constants.SoundProfile.DEFAULT_VIBRATION_PATTERN
+import com.pagzone.sonavi.util.Helper.Companion.stepsToVibrationPattern
+import com.pagzone.sonavi.viewmodel.ProfileSettingsViewModel
 import com.pagzone.sonavi.viewmodel.SoundViewModel
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @Preview(showBackground = true)
 @Composable
 fun AddSoundPage(
     modifier: Modifier = Modifier,
     viewModel: SoundViewModel = hiltViewModel(),
+    profileSettingsViewModel: ProfileSettingsViewModel = hiltViewModel(),
     onSoundCreated: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -103,6 +116,14 @@ fun AddSoundPage(
     val coroutineScope = rememberCoroutineScope()
 
     var soundName by remember { mutableStateOf("") }
+    var soundThreshold by remember { mutableFloatStateOf(CUSTOM_CONFIDENCE_THRESHOLD) }
+    var isCriticalSoundEnabled by remember { mutableStateOf(false) }
+    var selectedCooldown by remember { mutableIntStateOf(DEFAULT_EMERGENCY_COOLDOWN_IN_MINUTES) }
+    var vibrationPattern by remember { mutableStateOf(emptyList<Long>()) }
+    var selectedVibrationPattern by remember {
+        mutableStateOf("Default")
+    }
+
     var currentStep by remember { mutableStateOf(RecordingStep.NAME) }
     var samples by remember { mutableStateOf<List<AudioSample>>(emptyList()) }
     var isRecording by remember { mutableStateOf(false) }
@@ -110,6 +131,8 @@ fun AddSoundPage(
     var showHelpDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var currentAudioAmplitude by remember { mutableFloatStateOf(0f) }
+
+    val settings by profileSettingsViewModel.settings.collectAsStateWithLifecycle()
 
     // File picker launcher
     val audioPickerLauncher = rememberLauncherForActivityResult(
@@ -215,14 +238,34 @@ fun AddSoundPage(
 
         when (currentStep) {
             RecordingStep.NAME -> {
-                NameInputStep(
+                SoundDetailsStep(
                     soundName = soundName,
-                    onNameChanged = { soundName = it },
+                    soundThreshold = soundThreshold,
+                    isCriticalSoundEnabled = isCriticalSoundEnabled,
+                    selectedCooldown = selectedCooldown,
+                    vibrationPattern = vibrationPattern,
+                    selectedVibrationPattern = selectedVibrationPattern,
+                    onSoundNameChange = { soundName = it },
+                    onCriticalChange = { isCriticalSoundEnabled = it },
+                    onCooldownChange = { selectedCooldown = it },
+                    onSoundThresholdChange = { soundThreshold = it },
+                    onVibrationPatternChange = { vibrationPattern = it },
+                    onDefaultVibrationClick = {
+                        selectedVibrationPattern = "Default"
+                        vibrationPattern = DEFAULT_VIBRATION_PATTERN
+                    },
+                    onCustomVibrationClick = { selectedVibrationPattern = "Custom" },
+                    onDontShowAgainClick = {
+                        profileSettingsViewModel.updateShouldShowCriticalInfoDialog(
+                            false
+                        )
+                    },
                     onNext = {
                         if (soundName.isNotBlank()) {
                             currentStep = RecordingStep.RECORD
                         }
-                    }
+                    },
+                    settings = settings
                 )
             }
 
@@ -277,12 +320,27 @@ fun AddSoundPage(
             }
 
             RecordingStep.PREVIEW -> {
+                val isDefaultPattern =
+                    selectedVibrationPattern == "Default"
                 PreviewAndSaveStep(
                     soundName = soundName,
                     recordingCount = samples.size,
+                    threshold = soundThreshold,
+                    isCritical = isCriticalSoundEnabled,
+                    emergencyCooldownMinutes = selectedCooldown,
+                    vibrationPattern = vibrationPattern,
                     onSave = {
                         coroutineScope.launch {
-                            viewModel.createCustomSound(soundName, samples)
+                            viewModel.createCustomSound(
+                                soundName,
+                                samples,
+                                vibrationPattern =
+                                    if (isDefaultPattern) DEFAULT_VIBRATION_PATTERN
+                                    else vibrationPattern,
+                                threshold = soundThreshold,
+                                isCritical = isCriticalSoundEnabled,
+                                emergencyCooldownMinutes = selectedCooldown
+                            )
                             resetAddSound()
                             Toast.makeText(context, "Sound saved successfully", Toast.LENGTH_LONG)
                                 .show()
@@ -728,14 +786,29 @@ private fun StepConnector(
 
 
 @Composable
-private fun NameInputStep(
+private fun SoundDetailsStep(
     soundName: String,
-    onNameChanged: (String) -> Unit,
-    onNext: () -> Unit
+    soundThreshold: Float,
+    isCriticalSoundEnabled: Boolean,
+    selectedCooldown: Int,
+    vibrationPattern: List<Long>,
+    selectedVibrationPattern: String,
+    onSoundNameChange: (String) -> Unit,
+    onCriticalChange: (Boolean) -> Unit,
+    onCooldownChange: (Int) -> Unit,
+    onSoundThresholdChange: (Float) -> Unit,
+    onVibrationPatternChange: (List<Long>) -> Unit,
+    onDontShowAgainClick: () -> Unit,
+    onDefaultVibrationClick: () -> Unit = {},
+    onCustomVibrationClick: () -> Unit = {},
+    onNext: () -> Unit,
+    settings: Settings,
 ) {
+    val isFormValid = soundName.isNotBlank() && vibrationPattern.size >= 3
+
     Column(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Text(
             text = "What sound do you want to detect?",
@@ -743,24 +816,83 @@ private fun NameInputStep(
             color = MaterialTheme.colorScheme.onBackground
         )
 
-        OutlinedTextField(
-            value = soundName,
-            onValueChange = onNameChanged,
-            label = {
-                Text(
-                    "Sound name"
-                )
-            },
-            placeholder = {
-                Text(
-                    "e.g., My dog barking, Baby crying",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                )
-            },
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp)
-        )
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = soundName,
+                onValueChange = onSoundNameChange,
+                label = {
+                    Text(
+                        "Sound name"
+                    )
+                },
+                placeholder = {
+                    Text(
+                        "e.g., My dog barking, Baby crying",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    )
+                },
+                modifier = Modifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                CriticalToggle(
+                    modifier = Modifier.padding(20.dp),
+                    isCriticalEnabled = isCriticalSoundEnabled,
+                    selectedCooldown = selectedCooldown,
+                    onCriticalChanged = onCriticalChange,
+                    onCooldownChanged = onCooldownChange,
+                    shouldShowCriticalInfoDialog = settings.shouldShowCriticalInfoDialog,
+                    onDontShowAgainClick = onDontShowAgainClick
+                )
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                ThresholdSlider(
+                    modifier = Modifier.padding(20.dp),
+                    initialValue = soundThreshold,
+                    onThresholdChange = onSoundThresholdChange
+                )
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                VibrationPattern(
+                    modifier = Modifier.padding(20.dp),
+                    selectedVibrationPattern = selectedVibrationPattern,
+                    onVibrationPatternChanged = {
+                        val newVibrationPattern = stepsToVibrationPattern(it, 200).toList()
+                        onVibrationPatternChange(newVibrationPattern)
+                    },
+                    onDefaultVibrationClick = onDefaultVibrationClick,
+                    onCustomVibrationClick = onCustomVibrationClick
+                )
+            }
+        }
 
         Card(
             colors = CardDefaults.cardColors(
@@ -788,7 +920,7 @@ private fun NameInputStep(
 
         Button(
             onClick = onNext,
-            enabled = soundName.isNotBlank(),
+            enabled = isFormValid,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
@@ -1098,6 +1230,10 @@ private fun RecordButton(
 private fun PreviewAndSaveStep(
     soundName: String,
     recordingCount: Int,
+    threshold: Float,
+    isCritical: Boolean,
+    vibrationPattern: List<Long>,
+    emergencyCooldownMinutes: Int,
     onSave: () -> Unit,
     onBack: () -> Unit,
     onTrash: () -> Unit
@@ -1129,6 +1265,27 @@ private fun PreviewAndSaveStep(
                     label = "Samples recorded",
                     value = "$recordingCount"
                 )
+                InfoRow(
+                    label = "Detection threshold",
+                    value = "${(threshold * 100).roundToInt()}%"
+                )
+                InfoRow(
+                    label = "Is critical",
+                    value = if (isCritical) "Yes" else "No"
+                )
+                if (isCritical) {
+                    InfoRow(
+                        label = "Message cooldown",
+                        value = "$emergencyCooldownMinutes minutes"
+                    )
+                }
+                InfoRow(
+                    label = "Vibration pattern",
+                ) {
+                    VibrationPlayer(
+                        pattern = vibrationPattern
+                    )
+                }
             }
         }
 
@@ -1246,6 +1403,22 @@ private fun InfoRow(label: String, value: String) {
                 fontWeight = FontWeight.Medium
             )
         )
+    }
+}
+
+@Composable
+private fun InfoRow(label: String, content: @Composable () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        content()
     }
 }
 
