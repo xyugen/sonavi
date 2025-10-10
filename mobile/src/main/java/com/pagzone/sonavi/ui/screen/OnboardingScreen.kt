@@ -2,6 +2,7 @@ package com.pagzone.sonavi.ui.screen
 
 import androidx.activity.ComponentActivity
 import androidx.compose.foundation.BorderStroke
+import androidx.compose.foundation.Image
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -45,6 +46,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.StrokeCap
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.res.painterResource
 import androidx.compose.ui.res.vectorResource
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
@@ -84,17 +86,26 @@ fun OnboardingScreen(
 
         // Progress indicator
         if (currentStep < steps.size) {
-            LinearProgressIndicator(
-                progress = { (currentStep + 1) / steps.size.toFloat() },
+            Box(
                 modifier = Modifier
                     .fillMaxWidth()
-                    .padding(horizontal = 24.dp, vertical = 16.dp)
-                    .offset(y = 20.dp)
-                    .align(Alignment.TopCenter),
-                color = MaterialTheme.colorScheme.primary,
-                trackColor = MaterialTheme.colorScheme.surfaceVariant,
-                strokeCap = StrokeCap.Round
-            )
+                    .background(
+                        color = MaterialTheme.colorScheme.background
+                    )
+                    .align(Alignment.TopCenter)
+            ) {
+                LinearProgressIndicator(
+                    progress = { (currentStep + 1) / steps.size.toFloat() },
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(horizontal = 24.dp, vertical = 16.dp)
+                        .offset(y = 20.dp)
+                        .align(Alignment.TopCenter),
+                    color = MaterialTheme.colorScheme.primary,
+                    trackColor = MaterialTheme.colorScheme.surfaceVariant,
+                    strokeCap = StrokeCap.Round
+                )
+            }
         }
     }
 }
@@ -108,34 +119,33 @@ private fun WelcomeStep(onNext: () -> Unit) {
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(48.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
         // App Logo/Hero Section
         Box(
             modifier = Modifier
-                .size(120.dp)
+                .size(256.dp)
                 .background(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
                             Color.Transparent
                         ),
-                        radius = 250f
+                        radius = 342f
                     ),
                     shape = CircleShape
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = ImageVector.vectorResource(R.drawable.ic_ear),
-                contentDescription = null,
-                modifier = Modifier.size(56.dp),
-                tint = MaterialTheme.colorScheme.primary
+            Image(
+                painter = painterResource(R.drawable.img_sonavi_welcome),
+                contentDescription = "Connection",
+                modifier = Modifier.fillMaxSize()
             )
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(12.dp))
 
         // App Name
         Text(
@@ -324,13 +334,29 @@ private fun PermissionsStep(onNext: () -> Unit) {
     ) {
         Spacer(modifier = Modifier.height(32.dp))
 
-        // Header
-        Icon(
-            imageVector = ImageVector.vectorResource(R.drawable.ic_security),
-            contentDescription = null,
-            modifier = Modifier.size(64.dp),
-            tint = MaterialTheme.colorScheme.primary
-        )
+        // App Logo/Hero Section
+        Box(
+            modifier = Modifier
+                .size(200.dp)
+                .background(
+                    brush = Brush.radialGradient(
+                        colors = listOf(
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
+                            Color.Transparent
+                        ),
+                        radius = 342f
+                    ),
+                    shape = CircleShape
+                ),
+            contentAlignment = Alignment.Center
+        ) {
+            Image(
+                painter = painterResource(R.drawable.img_phone_permission),
+                contentDescription = "Phone Permission",
+                modifier = Modifier.fillMaxSize()
+            )
+        }
 
         Spacer(modifier = Modifier.height(16.dp))
 
@@ -618,34 +644,33 @@ private fun SetupStep(onComplete: (name: String, address: String?) -> Unit) {
             .padding(24.dp),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
-        Spacer(modifier = Modifier.height(40.dp))
+        Spacer(modifier = Modifier.height(32.dp))
 
-        // Hero Icon
+        // App Logo/Hero Section
         Box(
             modifier = Modifier
-                .size(120.dp)
+                .size(200.dp)
                 .background(
                     brush = Brush.radialGradient(
                         colors = listOf(
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.2f),
-                            MaterialTheme.colorScheme.primary.copy(alpha = 0.05f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.5f),
+                            MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
                             Color.Transparent
                         ),
-                        radius = 250f
+                        radius = 256f
                     ),
                     shape = CircleShape
                 ),
             contentAlignment = Alignment.Center
         ) {
-            Icon(
-                imageVector = ImageVector.vectorResource(R.drawable.ic_person_outline),
-                contentDescription = null,
-                modifier = Modifier.size(48.dp),
-                tint = MaterialTheme.colorScheme.primary
+            Image(
+                painter = painterResource(R.drawable.img_profile),
+                contentDescription = "Profile",
+                modifier = Modifier.fillMaxSize()
             )
         }
 
-        Spacer(modifier = Modifier.height(32.dp))
+        Spacer(modifier = Modifier.height(16.dp))
 
         // Title
         Text(
