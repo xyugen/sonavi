@@ -8,7 +8,7 @@
   A Sound Detection System for the Deaf and Hard of Hearing using On-Device Machine Learning
 </p>
 <p align="center">
-  <a href="https://github.com/xyugen/sonavi/releases/tag/v1.0.0">
+  <a href="https://github.com/xyugen/sonavi/releases/latest">
     <img alt="Release" src="https://img.shields.io/github/v/release/xyugen/sonavi?color=2b7fff" height="20">
   </a>
   <a href="LICENSE">
