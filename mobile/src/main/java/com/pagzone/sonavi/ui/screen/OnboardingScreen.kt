@@ -345,7 +345,7 @@ private fun PermissionsStep(onNext: () -> Unit) {
                             MaterialTheme.colorScheme.primary.copy(alpha = 0.25f),
                             Color.Transparent
                         ),
-                        radius = 342f
+                        radius = 300f
                     ),
                     shape = CircleShape
                 ),
