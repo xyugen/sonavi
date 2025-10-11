@@ -38,15 +38,17 @@ import com.pagzone.sonavi.util.Constants.SoundProfile.DEFAULT_VIBRATION_PATTERN
 
 @Composable
 fun VibrationPattern(
+    initialVibrationPattern: List<Long>,
     selectedVibrationPattern: String,
     onVibrationPatternChanged: (List<Boolean>) -> Unit,
     onDefaultVibrationClick: () -> Unit,
     onCustomVibrationClick: () -> Unit,
     modifier: Modifier = Modifier,
-    initialVibrationPattern: List<Long> = DEFAULT_VIBRATION_PATTERN,
     isDefaultVibrationPattern: Boolean = true,
     showHelp: Boolean = false
 ) {
+    val isDefaultVibrationPattern = initialVibrationPattern == DEFAULT_VIBRATION_PATTERN
+
     Column(
         modifier = modifier
     ) {

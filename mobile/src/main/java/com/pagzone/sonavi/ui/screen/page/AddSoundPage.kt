@@ -1176,6 +1176,7 @@ private fun SoundDetailsStep(
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 VibrationPattern(
+                    initialVibrationPattern = vibrationPattern,
                     modifier = vibrationPatternModifier.padding(20.dp),
                     selectedVibrationPattern = selectedVibrationPattern,
                     onVibrationPatternChanged = {
