@@ -8,10 +8,8 @@ import androidx.compose.animation.core.RepeatMode
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.infiniteRepeatable
 import androidx.compose.animation.core.tween
-import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
-import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -38,18 +36,20 @@ import androidx.compose.material.icons.automirrored.filled.ArrowForward
 import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Info
+import androidx.compose.material.icons.filled.PlayArrow
 import androidx.compose.material3.AlertDialog
 import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.IconButtonDefaults
+import androidx.compose.material3.LinearProgressIndicator
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
+import androidx.compose.material3.ProgressIndicatorDefaults
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
@@ -81,21 +81,41 @@ import androidx.compose.ui.tooling.preview.Preview
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.hilt.navigation.compose.hiltViewModel
+import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pagzone.sonavi.R
+import com.pagzone.sonavi.domain.AudioPlayer
 import com.pagzone.sonavi.domain.AudioQualityAnalyzer
+import com.pagzone.sonavi.domain.RealtimeAudioQualityAnalyzer
 import com.pagzone.sonavi.model.AudioSample
 import com.pagzone.sonavi.model.AudioSource
-import com.pagzone.sonavi.model.QualityLevel
+import com.pagzone.sonavi.model.RealtimeQuality
+import com.pagzone.sonavi.model.Settings
+import com.pagzone.sonavi.ui.component.CriticalToggle
+import com.pagzone.sonavi.ui.component.ThresholdSlider
+import com.pagzone.sonavi.ui.component.VibrationPattern
+import com.pagzone.sonavi.ui.component.VibrationPlayer
+import com.pagzone.sonavi.ui.component.getStandardTapTargetDefinition
+import com.pagzone.sonavi.ui.theme.Amber50
+import com.pagzone.sonavi.ui.theme.Lime50
+import com.pagzone.sonavi.ui.theme.Sky50
 import com.pagzone.sonavi.util.AudioRecorder
+import com.pagzone.sonavi.util.Constants.Classifier.CUSTOM_CONFIDENCE_THRESHOLD
+import com.pagzone.sonavi.util.Constants.SoundProfile.DEFAULT_EMERGENCY_COOLDOWN_IN_MINUTES
+import com.pagzone.sonavi.util.Constants.SoundProfile.DEFAULT_VIBRATION_PATTERN
+import com.pagzone.sonavi.util.Helper.Companion.stepsToVibrationPattern
+import com.pagzone.sonavi.viewmodel.ProfileSettingsViewModel
 import com.pagzone.sonavi.viewmodel.SoundViewModel
+import com.psoffritti.taptargetcompose.TapTargetScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
+import kotlin.math.roundToInt
 
 @Preview(showBackground = true)
 @Composable
-fun AddSoundPage(
+fun TapTargetScope.AddSoundPage(
     modifier: Modifier = Modifier,
     viewModel: SoundViewModel = hiltViewModel(),
+    profileSettingsViewModel: ProfileSettingsViewModel = hiltViewModel(),
     onSoundCreated: () -> Unit = {}
 ) {
     val context = LocalContext.current
@@ -103,6 +123,14 @@ fun AddSoundPage(
     val coroutineScope = rememberCoroutineScope()
 
     var soundName by remember { mutableStateOf("") }
+    var soundThreshold by remember { mutableFloatStateOf(CUSTOM_CONFIDENCE_THRESHOLD) }
+    var isCriticalSoundEnabled by remember { mutableStateOf(false) }
+    var selectedCooldown by remember { mutableIntStateOf(DEFAULT_EMERGENCY_COOLDOWN_IN_MINUTES) }
+    var vibrationPattern by remember { mutableStateOf(DEFAULT_VIBRATION_PATTERN) }
+    var selectedVibrationPattern by remember {
+        mutableStateOf("Default")
+    }
+
     var currentStep by remember { mutableStateOf(RecordingStep.NAME) }
     var samples by remember { mutableStateOf<List<AudioSample>>(emptyList()) }
     var isRecording by remember { mutableStateOf(false) }
@@ -110,6 +138,11 @@ fun AddSoundPage(
     var showHelpDialog by remember { mutableStateOf(false) }
     var errorMessage by remember { mutableStateOf<String?>(null) }
     var currentAudioAmplitude by remember { mutableFloatStateOf(0f) }
+
+    val audioPlayer = remember { AudioPlayer() }
+    var currentlyPlayingId by remember { mutableStateOf<String?>(null) }
+
+    val settings by profileSettingsViewModel.settings.collectAsStateWithLifecycle()
 
     // File picker launcher
     val audioPickerLauncher = rememberLauncherForActivityResult(
@@ -175,18 +208,74 @@ fun AddSoundPage(
         }
     }
 
+    DisposableEffect(Unit) {
+        onDispose {
+            if (audioRecorder.isRecording()) {
+                audioRecorder.stopRecording()
+            }
+            audioPlayer.stopPlayback()
+        }
+    }
+
     fun resetAddSound() {
         soundName = ""
+        isCriticalSoundEnabled = false
+        soundThreshold = CUSTOM_CONFIDENCE_THRESHOLD
+        selectedCooldown = DEFAULT_EMERGENCY_COOLDOWN_IN_MINUTES
+        vibrationPattern = DEFAULT_VIBRATION_PATTERN
+        selectedVibrationPattern = "Default"
         currentStep = RecordingStep.NAME
         samples = emptyList()
         isRecording = false
         recordingDuration = 0
     }
 
+    val scrollState = rememberScrollState()
+
+    fun scrollToBottom() {
+        coroutineScope.launch {
+            scrollState.animateScrollTo(
+                value = (scrollState.maxValue / 1.25).roundToInt()
+            )
+        }
+    }
+
+    val recordingTipsTapTarget = getStandardTapTargetDefinition(
+        precedence = 0,
+        title = "Recording Tips",
+        description = "Tap here anytime for best practices on recording and uploading sound samples."
+    )
+
+    val soundNameTapTarget = getStandardTapTargetDefinition(
+        precedence = 1,
+        title = "Name Your Sound",
+        description = "Give your sound a descriptive name like 'My Doorbell' or 'Baby Crying'."
+    )
+
+    val criticalTapTarget = getStandardTapTargetDefinition(
+        precedence = 2,
+        title = "Mark as Critical",
+        description = "Enable this to send emergency SMS alerts to your contacts when this sound is detected.",
+        onTargetClick = { scrollToBottom() },
+        onTargetCancel = { scrollToBottom() }
+    )
+
+    val thresholdTapTarget = getStandardTapTargetDefinition(
+        precedence = 3,
+        title = "Detection Sensitivity",
+        description = "Lower values detect sounds more easily. Higher values require stronger confidence. Start with 50 and adjust as needed."
+    )
+
+    val vibrationPatternTapTarget = getStandardTapTargetDefinition(
+        precedence = 4,
+        title = "Vibration Pattern",
+        description = "Choose a default pattern or create a custom one. You can test patterns before saving!"
+    )
+
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         Row(
@@ -202,6 +291,7 @@ fun AddSoundPage(
                 color = MaterialTheme.colorScheme.onBackground
             )
             IconButton(
+                modifier = Modifier.tapTarget(recordingTipsTapTarget),
                 onClick = { showHelpDialog = true },
                 colors = IconButtonDefaults.iconButtonColors(
                     contentColor = MaterialTheme.colorScheme.primary
@@ -215,22 +305,68 @@ fun AddSoundPage(
 
         when (currentStep) {
             RecordingStep.NAME -> {
-                NameInputStep(
+                SoundDetailsStep(
                     soundName = soundName,
-                    onNameChanged = { soundName = it },
+                    soundThreshold = soundThreshold,
+                    isCriticalSoundEnabled = isCriticalSoundEnabled,
+                    selectedCooldown = selectedCooldown,
+                    vibrationPattern = vibrationPattern,
+                    selectedVibrationPattern = selectedVibrationPattern,
+                    onSoundNameChange = { soundName = it },
+                    onCriticalChange = { isCriticalSoundEnabled = it },
+                    onCooldownChange = { selectedCooldown = it },
+                    onSoundThresholdChange = { soundThreshold = it },
+                    onVibrationPatternChange = { vibrationPattern = it },
+                    onDefaultVibrationClick = {
+                        selectedVibrationPattern = "Default"
+                        vibrationPattern = DEFAULT_VIBRATION_PATTERN
+                    },
+                    onCustomVibrationClick = { selectedVibrationPattern = "Custom" },
+                    soundNameModifier = Modifier.tapTarget(soundNameTapTarget),
+                    soundThresholdModifier = Modifier.tapTarget(thresholdTapTarget),
+                    isCriticalSoundModifier = Modifier.tapTarget(criticalTapTarget),
+                    vibrationPatternModifier = Modifier.tapTarget(vibrationPatternTapTarget),
+                    onDontShowAgainClick = {
+                        profileSettingsViewModel.updateShouldShowCriticalInfoDialog(
+                            false
+                        )
+                    },
                     onNext = {
                         if (soundName.isNotBlank()) {
                             currentStep = RecordingStep.RECORD
                         }
-                    }
+                    },
+                    settings = settings
                 )
             }
 
             RecordingStep.RECORD -> {
                 AudioSamplesStep(
                     samples = samples,
+                    audioRecorder = audioRecorder,
+                    currentlyPlayingId = currentlyPlayingId,
+                    onPlaySample = { sampleId ->
+                        val sample = samples.find { it.id == sampleId }
+                        sample?.let {
+                            currentlyPlayingId = sampleId
+                            coroutineScope.launch {
+                                // Both Recording and Upload now have FloatArray data
+                                val audioData = when (val source = it.source) {
+                                    is AudioSource.Recording -> source.data
+                                    is AudioSource.Upload -> source.data
+                                }
+
+                                audioPlayer.playAudio(audioData) {
+                                    currentlyPlayingId = null
+                                }
+                            }
+                        }
+                    },
+                    onStopPlayback = {
+                        audioPlayer.stopPlayback()
+                        currentlyPlayingId = null
+                    },
                     isRecording = isRecording,
-                    recordingDuration = recordingDuration,
                     currentAmplitude = currentAudioAmplitude,
                     onStartRecording = {
                         val success = audioRecorder.startRecording { error ->
@@ -277,12 +413,27 @@ fun AddSoundPage(
             }
 
             RecordingStep.PREVIEW -> {
+                val isDefaultPattern =
+                    selectedVibrationPattern == "Default"
                 PreviewAndSaveStep(
                     soundName = soundName,
                     recordingCount = samples.size,
+                    threshold = soundThreshold,
+                    isCritical = isCriticalSoundEnabled,
+                    emergencyCooldownMinutes = selectedCooldown,
+                    vibrationPattern = vibrationPattern,
                     onSave = {
                         coroutineScope.launch {
-                            viewModel.createCustomSound(soundName, samples)
+                            viewModel.createCustomSound(
+                                soundName,
+                                samples,
+                                vibrationPattern =
+                                    if (isDefaultPattern) DEFAULT_VIBRATION_PATTERN
+                                    else vibrationPattern,
+                                threshold = soundThreshold,
+                                isCritical = isCriticalSoundEnabled,
+                                emergencyCooldownMinutes = selectedCooldown
+                            )
                             resetAddSound()
                             Toast.makeText(context, "Sound saved successfully", Toast.LENGTH_LONG)
                                 .show()
@@ -371,8 +522,11 @@ fun StepProgressIndicator(
 @Composable
 private fun AudioSamplesStep(
     samples: List<AudioSample>,
+    audioRecorder: AudioRecorder,
+    currentlyPlayingId: String?,
+    onPlaySample: (String) -> Unit,
+    onStopPlayback: () -> Unit,
     isRecording: Boolean,
-    recordingDuration: Int,
     currentAmplitude: Float,
     onStartRecording: () -> Unit,
     onStopRecording: () -> Unit,
@@ -382,6 +536,19 @@ private fun AudioSamplesStep(
     onNext: () -> Unit,
     onBack: () -> Unit
 ) {
+    val realtimeAnalyzer = remember { RealtimeAudioQualityAnalyzer() }
+    var realtimeQuality by remember { mutableStateOf<RealtimeQuality?>(null) }
+
+    LaunchedEffect(isRecording) {
+        if (isRecording) {
+            while (true) {
+                val currentBuffer = audioRecorder.getCurrentBuffer()
+                realtimeQuality = realtimeAnalyzer.analyzeBuffer(currentBuffer)
+                delay(500)
+            }
+        }
+    }
+
     Column(
         modifier = Modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -423,41 +590,38 @@ private fun AudioSamplesStep(
             }
         }
 
-        // Info card
-        InfoCard(
-            text = "Record or upload audio of the same sound from different angles or distances. " +
-                    "Accepts MP3, M4A, WAV, OGG, FLAC (max 10 seconds)."
-        )
-
-        // Visual waveform feedback during recording
-        if (isRecording) {
-            AudioVisualizerCard(
-                amplitude = currentAmplitude,
-                duration = recordingDuration
-            )
-        }
-
         // Sample list
         LazyColumn(
             modifier = Modifier
-                .weight(1f)
-                .heightIn(min = 200.dp),
+                .fillMaxWidth()
+                .heightIn(max = 300.dp),
             verticalArrangement = Arrangement.spacedBy(8.dp)
         ) {
             itemsIndexed(samples) { index, sample ->
                 AudioSampleItem(
                     index = index + 1,
                     sample = sample,
-                    onDelete = { onDeleteSample(sample.id) }
+                    isPlaying = currentlyPlayingId == sample.id,
+                    onPlay = { onPlaySample(sample.id) },
+                    onStop = onStopPlayback,
+                    onDelete = { onDeleteSample(sample.id) },
+                    enabled = !isRecording  // Disable during recording
                 )
             }
+        }
 
-            // Show placeholders only if less than 3
-            if (samples.size < 3) {
-                items(3 - samples.size) { index ->
-                    PlaceholderSampleItem(index = samples.size + index + 1)
-                }
-            }
+        // Info card
+        InfoCard(
+            text = "Record or upload audio of the same sound from different angles or distances. " +
+                    "Upload accepts different audio file types (min 1 second, max 10 seconds)."
+        )
+
+        // REAL-TIME FEEDBACK (during recording)
+        if (isRecording && realtimeQuality != null) {
+            RealtimeFeedbackCard(
+                quality = realtimeQuality!!,
+                amplitude = currentAmplitude
+            )
         }
 
         // Action buttons (Record and Upload)
@@ -532,6 +696,177 @@ private fun AudioSamplesStep(
 }
 
 @Composable
+fun RealtimeFeedbackCard(
+    quality: RealtimeQuality,
+    amplitude: Float
+) {
+    Card(
+        colors = CardDefaults.cardColors(
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
+        ),
+        modifier = Modifier.fillMaxWidth()
+    ) {
+        Column(
+            modifier = Modifier.padding(16.dp),
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            // Header with status
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.SpaceBetween,
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(8.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Box(
+                        modifier = Modifier
+                            .size(12.dp)
+                            .clip(CircleShape)
+                            .background(MaterialTheme.colorScheme.error)
+                    )
+                    Text(
+                        text = "Recording",
+                        style = MaterialTheme.typography.labelLarge,
+                        fontWeight = FontWeight.Bold
+                    )
+                }
+
+                // Status icon
+                Icon(
+                    imageVector = when {
+                        quality.canUse -> Icons.Default.Check
+                        quality.isPeaking -> ImageVector.vectorResource(R.drawable.ic_triangle_alert)
+                        quality.isQuiet -> ImageVector.vectorResource(R.drawable.ic_volume_off)
+                        quality.isNoisy -> ImageVector.vectorResource(R.drawable.ic_audio_lines)
+                        else -> Icons.Default.Info
+                    },
+                    contentDescription = null,
+                    tint = when {
+                        quality.canUse -> Lime50
+                        else -> Color(0xFFFFC107)
+                    },
+                    modifier = Modifier.size(20.dp)
+                )
+            }
+
+            // Waveform visualization
+            WaveformVisualizer(
+                amplitude = amplitude,
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .height(60.dp)
+            )
+
+            // Audio levels display
+            Row(
+                modifier = Modifier.fillMaxWidth(),
+                horizontalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                LevelIndicator(
+                    label = "Quality",
+                    value = (quality.snr / 40f).coerceIn(0f, 1f) * 100,
+                    max = 100f,
+                    modifier = Modifier.weight(1f)
+                )
+
+                LevelIndicator(
+                    label = "Loudness",
+                    value = (quality.rmsLevel / 0.3f).coerceIn(0f, 1f) * 100,
+                    max = 100f,
+                    isWarning = quality.isPeaking,
+                    modifier = Modifier.weight(1f)
+                )
+            }
+
+            // Suggestion text
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .background(
+                        color = when {
+                            quality.canUse -> Lime50.copy(alpha = 0.1f)
+                            quality.isPeaking -> Amber50.copy(alpha = 0.1f)
+                            quality.isQuiet -> Amber50.copy(alpha = 0.1f)
+                            else -> Sky50.copy(alpha = 0.1f)
+                        },
+                        shape = RoundedCornerShape(8.dp)
+                    )
+                    .padding(12.dp),
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(8.dp)
+            ) {
+                Icon(
+                    imageVector = when {
+                        quality.canUse -> Icons.Default.Check
+                        else -> Icons.Default.Info
+                    },
+                    contentDescription = null,
+                    modifier = Modifier.size(16.dp),
+                    tint = when {
+                        quality.canUse -> Lime50
+                        else -> Color(0xFFFFC107)
+                    }
+                )
+                Text(
+                    text = quality.suggestion,
+                    style = MaterialTheme.typography.bodySmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun LevelIndicator(
+    label: String,
+    value: Float,
+    max: Float,
+    modifier: Modifier = Modifier,
+    isWarning: Boolean = false
+) {
+    Column(
+        modifier = modifier,
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween
+        ) {
+            Text(
+                text = label,
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurfaceVariant
+            )
+            Text(
+                text = "%.2f".format(value),
+                style = MaterialTheme.typography.labelSmall,
+                color = MaterialTheme.colorScheme.onSurface,
+                fontWeight = FontWeight.Bold
+            )
+        }
+
+        LinearProgressIndicator(
+            progress = { (value / max).coerceIn(0f, 1f) },
+            modifier = Modifier
+                .fillMaxWidth()
+                .height(4.dp)
+                .clip(RoundedCornerShape(2.dp)),
+            color = when {
+                isWarning -> Amber50
+                value < max * 0.3f -> Sky50
+                value < max * 0.7f -> Lime50
+                else -> Color(0xFFFFC107)
+            },
+            trackColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f),
+            strokeCap = ProgressIndicatorDefaults.LinearStrokeCap,
+        )
+    }
+}
+
+@Composable
 private fun InfoCard(text: String) {
     Card(
         colors = CardDefaults.cardColors(
@@ -563,97 +898,110 @@ private fun InfoCard(text: String) {
 private fun AudioSampleItem(
     index: Int,
     sample: AudioSample,
-    onDelete: () -> Unit
+    isPlaying: Boolean,
+    onPlay: () -> Unit,
+    onStop: () -> Unit,
+    onDelete: () -> Unit,
+    enabled: Boolean = true
 ) {
     val source = sample.source
-    val quality = sample.quality
+    val duration = sample.quality?.duration
 
     Card(
+        modifier = Modifier.fillMaxWidth(),
         colors = CardDefaults.cardColors(
-            containerColor = when (quality?.quality) {
-                QualityLevel.EXCELLENT -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.6f)
-                QualityLevel.GOOD -> MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)
-                QualityLevel.FAIR -> MaterialTheme.colorScheme.tertiaryContainer.copy(alpha = 0.5f)
-                QualityLevel.POOR -> MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
-                null -> MaterialTheme.colorScheme.surfaceVariant
-            }
-        )
+            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
+        ),
+        shape = RoundedCornerShape(12.dp),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
     ) {
-        Column(
+        Row(
             modifier = Modifier
                 .fillMaxWidth()
-                .padding(16.dp),
-            verticalArrangement = Arrangement.spacedBy(8.dp)
+                .padding(horizontal = 12.dp, vertical = 8.dp),
+            verticalAlignment = Alignment.CenterVertically
         ) {
-            // Header row
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
+            // Play/Stop button
+            IconButton(
+                onClick = if (isPlaying) onStop else onPlay,
+                enabled = enabled,
+                modifier = Modifier.size(40.dp),
+                colors = IconButtonDefaults.iconButtonColors(
+                    containerColor =
+                        if (isPlaying) MaterialTheme.colorScheme.error
+                        else MaterialTheme.colorScheme.primaryContainer,
+                    contentColor =
+                        if (isPlaying) MaterialTheme.colorScheme.onError
+                        else MaterialTheme.colorScheme.onPrimaryContainer
+                )
+            ) {
+                Icon(
+                    imageVector = if (isPlaying)
+                        ImageVector.vectorResource(R.drawable.ic_stop)
+                    else
+                        Icons.Filled.PlayArrow,
+                    contentDescription = if (isPlaying) "Stop" else "Play",
+                    modifier = Modifier.size(24.dp)
+                )
+            }
+
+            Spacer(Modifier.width(8.dp))
+
+            // Icon + Info
+            Icon(
+                imageVector = when (source) {
+                    is AudioSource.Recording -> ImageVector.vectorResource(R.drawable.ic_mic_filled)
+                    is AudioSource.Upload -> ImageVector.vectorResource(R.drawable.ic_upload_file)
+                },
+                contentDescription = null,
+                tint = MaterialTheme.colorScheme.primary,
+                modifier = Modifier.size(20.dp)
+            )
+
+            Spacer(Modifier.width(8.dp))
+
+            Column(
+                modifier = Modifier.weight(1f),
+                verticalArrangement = Arrangement.spacedBy(1.dp)
             ) {
                 Row(
-                    horizontalArrangement = Arrangement.spacedBy(12.dp),
-                    verticalAlignment = Alignment.CenterVertically
+                    verticalAlignment = Alignment.CenterVertically,
+                    horizontalArrangement = Arrangement.spacedBy(6.dp)
                 ) {
-                    Icon(
-                        imageVector = when (source) {
-                            is AudioSource.Recording -> ImageVector.vectorResource(R.drawable.ic_mic_filled)
-                            is AudioSource.Upload -> ImageVector.vectorResource(R.drawable.ic_upload_file)
-                        },
-                        contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary
+                    Text(
+                        text = "Sample $index",
+                        style = MaterialTheme.typography.bodyMedium.copy(fontWeight = FontWeight.Medium),
+                        color = MaterialTheme.colorScheme.onSurface
                     )
-                    Column {
-                        Text(
-                            text = "Sample $index",
-                            style = MaterialTheme.typography.bodyLarge.copy(
-                                fontWeight = FontWeight.Medium
-                            )
-                        )
-                        if (source is AudioSource.Upload) {
-                            Text(
-                                text = source.fileName,
-                                style = MaterialTheme.typography.bodySmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                maxLines = 1,
-                                overflow = TextOverflow.Ellipsis
-                            )
-                        }
-                    }
+                    Text(
+                        text = "($duration seconds)",
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
                 }
-
-                IconButton(onClick = onDelete) {
-                    Icon(
-                        imageVector = Icons.Default.Delete,
-                        contentDescription = "Delete",
-                        tint = MaterialTheme.colorScheme.error
+                if (source is AudioSource.Upload) {
+                    Text(
+                        text = source.fileName,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
                     )
                 }
             }
 
-            // Quality info
-            if (quality != null) {
-                HorizontalDivider(
-                    color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f),
-                    thickness = 1.dp
+            // Delete button
+            IconButton(
+                onClick = onDelete,
+                enabled = !isPlaying, // Disable delete while playing
+                modifier = Modifier.size(32.dp)
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Delete,
+                    contentDescription = "Delete",
+                    tint = if (!isPlaying) MaterialTheme.colorScheme.error
+                    else MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.38f)
                 )
-
-                Row(
-                    modifier = Modifier.fillMaxWidth(),
-                    horizontalArrangement = Arrangement.SpaceBetween
-                ) {
-                    // Duration
-                    InfoChip(
-                        icon = ImageVector.vectorResource(R.drawable.ic_schedule),
-                        text = "${"%.1f".format(quality.duration)}s"
-                    )
-
-                    // Quality level
-                    QualityChip(quality = quality.quality)
-
-                    // Signal strength
-                    SignalStrengthIndicator(rms = quality.rmsLevel)
-                }
             }
         }
     }
@@ -728,14 +1076,33 @@ private fun StepConnector(
 
 
 @Composable
-private fun NameInputStep(
+private fun SoundDetailsStep(
     soundName: String,
-    onNameChanged: (String) -> Unit,
-    onNext: () -> Unit
+    soundThreshold: Float,
+    isCriticalSoundEnabled: Boolean,
+    selectedCooldown: Int,
+    vibrationPattern: List<Long>,
+    selectedVibrationPattern: String,
+    onSoundNameChange: (String) -> Unit,
+    onCriticalChange: (Boolean) -> Unit,
+    onCooldownChange: (Int) -> Unit,
+    onSoundThresholdChange: (Float) -> Unit,
+    onVibrationPatternChange: (List<Long>) -> Unit,
+    onDontShowAgainClick: () -> Unit,
+    onDefaultVibrationClick: () -> Unit = {},
+    onCustomVibrationClick: () -> Unit = {},
+    soundNameModifier: Modifier = Modifier,
+    soundThresholdModifier: Modifier = Modifier,
+    isCriticalSoundModifier: Modifier = Modifier,
+    vibrationPatternModifier: Modifier = Modifier,
+    onNext: () -> Unit,
+    settings: Settings,
 ) {
+    val isFormValid = soundName.isNotBlank() && vibrationPattern.size >= 3
+
     Column(
         modifier = Modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(16.dp)
+        verticalArrangement = Arrangement.spacedBy(14.dp)
     ) {
         Text(
             text = "What sound do you want to detect?",
@@ -743,24 +1110,84 @@ private fun NameInputStep(
             color = MaterialTheme.colorScheme.onBackground
         )
 
-        OutlinedTextField(
-            value = soundName,
-            onValueChange = onNameChanged,
-            label = {
-                Text(
-                    "Sound name"
-                )
-            },
-            placeholder = {
-                Text(
-                    "e.g., My dog barking, Baby crying",
-                    color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
-                )
-            },
+        Column(
             modifier = Modifier.fillMaxWidth(),
-            singleLine = true,
-            shape = RoundedCornerShape(12.dp)
-        )
+            verticalArrangement = Arrangement.spacedBy(12.dp)
+        ) {
+            OutlinedTextField(
+                value = soundName,
+                onValueChange = onSoundNameChange,
+                label = {
+                    Text(
+                        "Sound name"
+                    )
+                },
+                placeholder = {
+                    Text(
+                        "e.g., My dog barking, Baby crying",
+                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
+                    )
+                },
+                modifier = soundNameModifier.fillMaxWidth(),
+                singleLine = true,
+                shape = RoundedCornerShape(12.dp)
+            )
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                CriticalToggle(
+                    modifier = isCriticalSoundModifier.padding(20.dp),
+                    isCriticalEnabled = isCriticalSoundEnabled,
+                    selectedCooldown = selectedCooldown,
+                    onCriticalChanged = onCriticalChange,
+                    onCooldownChanged = onCooldownChange,
+                    shouldShowCriticalInfoDialog = settings.shouldShowCriticalInfoDialog,
+                    onDontShowAgainClick = onDontShowAgainClick
+                )
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                ThresholdSlider(
+                    modifier = soundThresholdModifier.padding(20.dp),
+                    initialValue = soundThreshold,
+                    onThresholdChange = onSoundThresholdChange
+                )
+            }
+
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.3f)
+                ),
+                shape = RoundedCornerShape(12.dp),
+                elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
+            ) {
+                VibrationPattern(
+                    initialVibrationPattern = vibrationPattern,
+                    modifier = vibrationPatternModifier.padding(20.dp),
+                    selectedVibrationPattern = selectedVibrationPattern,
+                    onVibrationPatternChanged = {
+                        val newVibrationPattern = stepsToVibrationPattern(it, 200).toList()
+                        onVibrationPatternChange(newVibrationPattern)
+                    },
+                    onDefaultVibrationClick = onDefaultVibrationClick,
+                    onCustomVibrationClick = onCustomVibrationClick
+                )
+            }
+        }
 
         Card(
             colors = CardDefaults.cardColors(
@@ -788,7 +1215,7 @@ private fun NameInputStep(
 
         Button(
             onClick = onNext,
-            enabled = soundName.isNotBlank(),
+            enabled = isFormValid,
             modifier = Modifier.fillMaxWidth(),
             shape = RoundedCornerShape(12.dp),
             colors = ButtonDefaults.buttonColors(
@@ -798,63 +1225,6 @@ private fun NameInputStep(
             Text("Next", style = MaterialTheme.typography.labelLarge)
             Spacer(Modifier.width(8.dp))
             Icon(Icons.AutoMirrored.Default.ArrowForward, null, modifier = Modifier.size(18.dp))
-        }
-    }
-}
-
-@Composable
-private fun AudioVisualizerCard(
-    amplitude: Float,
-    duration: Int
-) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.3f)
-        ),
-        modifier = Modifier.fillMaxWidth()
-    ) {
-        Column(
-            modifier = Modifier.padding(20.dp),
-            verticalArrangement = Arrangement.spacedBy(12.dp)
-        ) {
-            Row(
-                modifier = Modifier.fillMaxWidth(),
-                horizontalArrangement = Arrangement.SpaceBetween,
-                verticalAlignment = Alignment.CenterVertically
-            ) {
-                Row(
-                    horizontalArrangement = Arrangement.spacedBy(8.dp),
-                    verticalAlignment = Alignment.CenterVertically
-                ) {
-                    Box(
-                        modifier = Modifier
-                            .size(12.dp)
-                            .clip(CircleShape)
-                            .background(MaterialTheme.colorScheme.error)
-                    )
-                    Text(
-                        text = "Recording",
-                        style = MaterialTheme.typography.labelLarge,
-                        fontWeight = FontWeight.Bold,
-                        color = MaterialTheme.colorScheme.onSurface
-                    )
-                }
-
-                Text(
-                    text = "${duration}s / 10s",
-                    style = MaterialTheme.typography.labelLarge,
-                    fontWeight = FontWeight.Bold,
-                    color = MaterialTheme.colorScheme.primary
-                )
-            }
-
-            // Waveform visualization
-            WaveformVisualizer(
-                amplitude = amplitude,
-                modifier = Modifier
-                    .fillMaxWidth()
-                    .height(80.dp)
-            )
         }
     }
 }
@@ -885,118 +1255,6 @@ private fun WaveformVisualizer(
                 topLeft = Offset(x, centerY - barHeight / 2),
                 size = Size(barWidth - 2f, barHeight),
                 cornerRadius = CornerRadius(2f, 2f)
-            )
-        }
-    }
-}
-
-@Composable
-private fun PlaceholderSampleItem(index: Int) {
-    Card(
-        colors = CardDefaults.cardColors(
-            containerColor = MaterialTheme.colorScheme.surfaceVariant.copy(alpha = 0.5f)
-        ),
-        border = BorderStroke(1.dp, MaterialTheme.colorScheme.outline.copy(alpha = 0.3f))
-    ) {
-        Row(
-            modifier = Modifier
-                .fillMaxWidth()
-                .padding(16.dp),
-            horizontalArrangement = Arrangement.spacedBy(12.dp),
-            verticalAlignment = Alignment.CenterVertically
-        ) {
-            Box(
-                modifier = Modifier
-                    .size(24.dp)
-                    .border(
-                        2.dp,
-                        MaterialTheme.colorScheme.outline.copy(alpha = 0.5f),
-                        CircleShape
-                    )
-            )
-            Text(
-                text = "Sample $index",
-                style = MaterialTheme.typography.bodyLarge,
-                color = MaterialTheme.colorScheme.onSurfaceVariant
-            )
-        }
-    }
-}
-
-@Composable
-private fun InfoChip(icon: ImageVector, text: String) {
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(4.dp),
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Icon(
-            imageVector = icon,
-            contentDescription = null,
-            modifier = Modifier.size(14.dp),
-            tint = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-        Text(
-            text = text,
-            style = MaterialTheme.typography.bodySmall,
-            color = MaterialTheme.colorScheme.onSurfaceVariant
-        )
-    }
-}
-
-@Composable
-private fun QualityChip(quality: QualityLevel) {
-    val (text, color) = when (quality) {
-        QualityLevel.EXCELLENT -> "Excellent" to Color(0xFF4CAF50)
-        QualityLevel.GOOD -> "Good" to Color(0xFF8BC34A)
-        QualityLevel.FAIR -> "Fair" to Color(0xFFFFC107)
-        QualityLevel.POOR -> "Poor" to Color(0xFFF44336)
-    }
-
-    Surface(
-        shape = RoundedCornerShape(4.dp),
-        color = color.copy(alpha = 0.2f)
-    ) {
-        Text(
-            text = text,
-            style = MaterialTheme.typography.labelSmall,
-            color = color,
-            modifier = Modifier.padding(horizontal = 6.dp, vertical = 2.dp),
-            fontWeight = FontWeight.Medium
-        )
-    }
-}
-
-@Composable
-private fun SignalStrengthIndicator(rms: Float) {
-    val bars = when {
-        rms > 0.15f -> 5
-        rms > 0.10f -> 4
-        rms > 0.06f -> 3
-        rms > 0.03f -> 2
-        else -> 1
-    }
-
-    Row(
-        horizontalArrangement = Arrangement.spacedBy(2.dp),
-        verticalAlignment = Alignment.Bottom
-    ) {
-        repeat(5) { index ->
-            Box(
-                modifier = Modifier
-                    .width(3.dp)
-                    .height(4.dp + (index * 2).dp)
-                    .background(
-                        color = if (index < bars) {
-                            when {
-                                bars >= 4 -> Color(0xFF4CAF50)
-                                bars >= 3 -> Color(0xFFFFC107)
-                                else -> Color(0xFFF44336)
-                            }
-                        } else {
-                            MaterialTheme.colorScheme.outline.copy(alpha = 0.3f)
-                        },
-                        shape = RoundedCornerShape(1.dp)
-                    )
             )
         }
     }
@@ -1098,6 +1356,10 @@ private fun RecordButton(
 private fun PreviewAndSaveStep(
     soundName: String,
     recordingCount: Int,
+    threshold: Float,
+    isCritical: Boolean,
+    vibrationPattern: List<Long>,
+    emergencyCooldownMinutes: Int,
     onSave: () -> Unit,
     onBack: () -> Unit,
     onTrash: () -> Unit
@@ -1129,6 +1391,27 @@ private fun PreviewAndSaveStep(
                     label = "Samples recorded",
                     value = "$recordingCount"
                 )
+                InfoRow(
+                    label = "Detection threshold",
+                    value = "${(threshold * 100).roundToInt()}%"
+                )
+                InfoRow(
+                    label = "Is critical",
+                    value = if (isCritical) "Yes" else "No"
+                )
+                if (isCritical) {
+                    InfoRow(
+                        label = "Message cooldown",
+                        value = "$emergencyCooldownMinutes minutes"
+                    )
+                }
+                InfoRow(
+                    label = "Vibration pattern",
+                ) {
+                    VibrationPlayer(
+                        pattern = vibrationPattern
+                    )
+                }
             }
         }
 
@@ -1250,6 +1533,22 @@ private fun InfoRow(label: String, value: String) {
 }
 
 @Composable
+private fun InfoRow(label: String, content: @Composable () -> Unit) {
+    Row(
+        modifier = Modifier.fillMaxWidth(),
+        horizontalArrangement = Arrangement.SpaceBetween,
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = label,
+            style = MaterialTheme.typography.bodyMedium,
+            color = MaterialTheme.colorScheme.onSurfaceVariant
+        )
+        content()
+    }
+}
+
+@Composable
 fun HelpDialog(onDismiss: () -> Unit) {
     AlertDialog(
         onDismissRequest = onDismiss,
@@ -1262,7 +1561,7 @@ fun HelpDialog(onDismiss: () -> Unit) {
             ) {
                 Text(
                     text = "Works best with:",
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                     style = MaterialTheme.typography.bodyMedium
                 )
 
@@ -1274,12 +1573,11 @@ fun HelpDialog(onDismiss: () -> Unit) {
 
                 Text(
                     text = "Recording tips:",
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                     style = MaterialTheme.typography.bodyMedium
                 )
 
                 BulletPoint("Add 3-5 samples from different angles/distances")
-                BulletPoint("Record in the actual location you'll use it")
                 BulletPoint("Make sure sound is clear and loud enough")
                 BulletPoint("Minimize background noise")
 
@@ -1287,12 +1585,22 @@ fun HelpDialog(onDismiss: () -> Unit) {
 
                 Text(
                     text = "Upload options:",
-                    fontWeight = FontWeight.SemiBold,
+                    fontWeight = FontWeight.Medium,
                     style = MaterialTheme.typography.bodyMedium
                 )
 
+                Spacer(Modifier.height(4.dp))
+
                 BulletPoint("Accepts MP3, M4A, WAV, OGG, FLAC")
-                BulletPoint("Maximum 10 seconds per file")
+
+                Text(
+                    text = "Duration:",
+                    fontWeight = FontWeight.Medium,
+                    style = MaterialTheme.typography.bodyMedium
+                )
+
+                BulletPoint("Minimum of 1 second per sample")
+                BulletPoint("Maximum of 10 seconds per sample")
 
                 Spacer(Modifier.height(4.dp))
 

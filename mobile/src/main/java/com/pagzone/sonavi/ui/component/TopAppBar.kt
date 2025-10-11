@@ -26,6 +26,12 @@ fun TopAppBar(
     isListenModeEnabled: Boolean = false,
     onListenModeChange: (Boolean) -> Unit = {}
 ) {
+//    val listenModeTapTarget = getStandardTapTargetDefinition(
+//        precedence = 1,
+//        title = "Listen Mode Toggle",
+//        description = "Toggle this ON to start listening. Your watch will detect sounds and vibrate.",
+//    )
+
     Column(
         modifier = modifier
             .fillMaxWidth()
@@ -61,6 +67,7 @@ fun TopAppBar(
         Spacer(modifier = Modifier.height(10.dp))
 
         ListenModeToggle(
+//            modifier = Modifier.tapTarget(listenModeTapTarget),
             checked = isListenModeChecked,
             enabled = isListenModeEnabled,
             onChange = onListenModeChange

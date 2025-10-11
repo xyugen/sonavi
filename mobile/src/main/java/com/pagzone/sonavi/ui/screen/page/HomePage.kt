@@ -54,13 +54,18 @@ import androidx.lifecycle.viewmodel.compose.viewModel
 import com.pagzone.sonavi.R
 import com.pagzone.sonavi.model.ClassificationResult
 import com.pagzone.sonavi.model.SoundStats
-import com.pagzone.sonavi.util.Helper.Companion.formatTimestamp
+import com.pagzone.sonavi.ui.component.RelativeTimeText
+import com.pagzone.sonavi.ui.component.getStandardTapTargetDefinition
+import com.pagzone.sonavi.ui.theme.Amber50
+import com.pagzone.sonavi.ui.theme.Green50
+import com.pagzone.sonavi.ui.theme.Red50
 import com.pagzone.sonavi.viewmodel.ClassificationResultViewModel
 import com.pagzone.sonavi.viewmodel.ClientDataViewModel
+import com.psoffritti.taptargetcompose.TapTargetScope
 import kotlin.math.roundToInt
 
 @Composable
-fun HomePage(
+fun TapTargetScope.HomePage(
     modifier: Modifier = Modifier,
     viewModel: ClientDataViewModel = viewModel(),
     classificationViewModel: ClassificationResultViewModel = viewModel()
@@ -93,6 +98,24 @@ fun HomePage(
         }
     }
 
+    val connectionStatusTapTarget = getStandardTapTargetDefinition(
+        precedence = 0,
+        title = "Watch Connection Status",
+        description = "This shows if your smartwatch is connected. Make sure Sonavi is open on your watch!",
+    )
+
+    val overviewTapTarget = getStandardTapTargetDefinition(
+        precedence = 1,
+        title = "Overview",
+        description = "Track how many sounds have been detected during this session."
+    )
+
+    val recentActivityTapTarget = getStandardTapTargetDefinition(
+        precedence = 2,
+        title = "Recent Activity",
+        description = "See the last 15 detected sounds with their confidence level and timestamp."
+    )
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -100,6 +123,7 @@ fun HomePage(
         // Hero Section with Welcome & Connection Status
         item {
             HeroSection(
+                modifier = Modifier.tapTarget(connectionStatusTapTarget),
                 viewModel = viewModel,
                 isConnected = isConnected,
                 onRetryClick = {
@@ -115,12 +139,16 @@ fun HomePage(
 
         // Stats Overview Card
         item {
-            StatsOverviewCard(stats = todayStats)
+            StatsOverviewCard(
+                modifier = Modifier.tapTarget(overviewTapTarget),
+                stats = todayStats
+            )
         }
 
         // Sound History Header with Enhanced Design
         item {
             SectionHeader(
+                modifier = Modifier.tapTarget(recentActivityTapTarget),
                 title = "Recent Activity",
                 subtitle = "${recentResults.size} sounds detected",
                 icon = R.drawable.ic_library_music
@@ -157,12 +185,13 @@ fun HomePage(
 private fun HeroSection(
     viewModel: ClientDataViewModel,
     isConnected: Boolean,
-    onRetryClick: () -> Unit
+    onRetryClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val deviceName by viewModel.deviceName.collectAsStateWithLifecycle()
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Modern Status Card
@@ -182,7 +211,9 @@ private fun ConnectionStatusCard(
     modifier: Modifier = Modifier
 ) {
     Row(
-        modifier = modifier.fillMaxWidth().padding(14.dp),
+        modifier = modifier
+            .fillMaxWidth()
+            .padding(14.dp),
         horizontalArrangement = Arrangement.spacedBy(8.dp),
         verticalAlignment = Alignment.CenterVertically
     ) {
@@ -377,14 +408,14 @@ private fun PulsingDot() {
 }
 
 @Composable
-private fun StatsOverviewCard(stats: SoundStats) {
+private fun StatsOverviewCard(stats: SoundStats, modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Header
         Text(
-            text = "Today's Activity",
+            text = "Overview",
             style = MaterialTheme.typography.titleMedium,
             fontWeight = FontWeight.SemiBold,
             color = MaterialTheme.colorScheme.onSurface
@@ -490,9 +521,11 @@ private fun StatItem(
 private fun SectionHeader(
     title: String,
     subtitle: String,
-    icon: Int
+    icon: Int,
+    modifier: Modifier = Modifier
 ) {
     Row(
+        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(
@@ -533,30 +566,28 @@ fun SoundHistoryItem(
         when {
             result.confidence >= 0.9 -> Triple(
                 "High",
-                Color(0xFF059669),
-                Color(0xFF059669).copy(alpha = 0.12f)
+                Green50,
+                Green50.copy(alpha = 0.12f)
             )
 
-            result.confidence >= 0.8 -> Triple(
+            result.confidence >= 0.75 -> Triple(
                 "Medium",
-                Color(0xFFD97706),
-                Color(0xFFD97706).copy(alpha = 0.12f)
+                Amber50,
+                Amber50.copy(alpha = 0.12f)
             )
 
             else -> Triple(
                 "Low",
-                Color(0xFFDC2626),
-                Color(0xFFDC2626).copy(alpha = 0.12f)
+                Red50,
+                Red50.copy(alpha = 0.12f)
             )
         }
     }
 
-    val formattedDate = remember(result.timestamp) {
-        formatTimestamp(result.timestamp)
-    }
-
     val backgroundColor by animateColorAsState(
-        targetValue = if (isLatest) {
+        targetValue = if (result.isCritical) {
+            MaterialTheme.colorScheme.error.copy(alpha = 0.05f)
+        } else if (isLatest) {
             MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.15f)
         } else {
             MaterialTheme.colorScheme.surface
@@ -579,41 +610,73 @@ fun SoundHistoryItem(
             // Compact icon
             Surface(
                 shape = RoundedCornerShape(8.dp),
-                color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
+                color =
+                    if (result.isCritical) MaterialTheme.colorScheme.error.copy(alpha = 0.1f)
+                    else MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
                 modifier = Modifier.size(36.dp)
             ) {
                 Box(contentAlignment = Alignment.Center) {
                     Icon(
-                        imageVector = ImageVector.vectorResource(R.drawable.ic_audio_lines),
+                        imageVector =
+                            if (result.isCritical) ImageVector.vectorResource(R.drawable.ic_emergency_home_filled)
+                            else ImageVector.vectorResource(R.drawable.ic_audio_lines),
                         contentDescription = null,
-                        tint = MaterialTheme.colorScheme.primary,
+                        tint =
+                            if (result.isCritical) MaterialTheme.colorScheme.error
+                            else MaterialTheme.colorScheme.primary,
                         modifier = Modifier.size(18.dp)
                     )
                 }
             }
 
-            // Content - takes available space
+            // Content
             Column(
                 modifier = Modifier.weight(1f, fill = true),
                 verticalArrangement = Arrangement.spacedBy(3.dp)
             ) {
-                // Sound label - will ellipsize if too long
-                Text(
-                    text = result.label,
-                    style = MaterialTheme.typography.bodyMedium,
-                    fontWeight = FontWeight.SemiBold,
-                    color = MaterialTheme.colorScheme.onSurface,
-                    maxLines = 1,
-                    overflow = TextOverflow.Ellipsis
-                )
+                // Time and confidence row
+                Row(
+                    horizontalArrangement = Arrangement.spacedBy(6.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    // Sound label
+                    Text(
+                        text = result.label,
+                        style = MaterialTheme.typography.bodyMedium,
+                        fontWeight = FontWeight.Medium,
+                        color = MaterialTheme.colorScheme.onSurface,
+                        maxLines = 1,
+                        overflow = TextOverflow.Ellipsis
+                    )
+
+                    if (result.isCritical) {
+                        Box(
+                            modifier = Modifier
+                                .size(2.dp)
+                                .background(
+                                    MaterialTheme.colorScheme.onSurface.copy(alpha = 0.3f),
+                                    CircleShape
+                                )
+                        )
+
+                        Text(
+                            text = "Critical",
+                            style = MaterialTheme.typography.bodyMedium,
+                            fontWeight = FontWeight.Normal,
+                            color = MaterialTheme.colorScheme.error,
+                            maxLines = 1,
+                            overflow = TextOverflow.Ellipsis
+                        )
+                    }
+                }
 
                 // Time and confidence row
                 Row(
                     horizontalArrangement = Arrangement.spacedBy(6.dp),
                     verticalAlignment = Alignment.CenterVertically
                 ) {
-                    Text(
-                        text = formattedDate,
+                    RelativeTimeText(
+                        timestamp = result.timestamp,
                         style = MaterialTheme.typography.labelSmall,
                         color = MaterialTheme.colorScheme.onSurface.copy(alpha = 0.6f)
                     )

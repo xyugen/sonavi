@@ -1,14 +1,9 @@
 package com.pagzone.sonavi.ui.screen.page
 
 import android.widget.Toast
-import androidx.compose.animation.AnimatedVisibility
 import androidx.compose.animation.core.Spring
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.spring
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.fadeIn
-import androidx.compose.animation.fadeOut
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.BorderStroke
 import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
@@ -34,7 +29,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -49,7 +44,6 @@ import androidx.compose.material3.Button
 import androidx.compose.material3.ButtonDefaults
 import androidx.compose.material3.Card
 import androidx.compose.material3.CardDefaults
-import androidx.compose.material3.Checkbox
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.ExperimentalMaterial3Api
 import androidx.compose.material3.HorizontalDivider
@@ -61,11 +55,7 @@ import androidx.compose.material3.ModalBottomSheet
 import androidx.compose.material3.OutlinedButton
 import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.OutlinedTextFieldDefaults
-import androidx.compose.material3.Slider
-import androidx.compose.material3.SliderDefaults
 import androidx.compose.material3.Surface
-import androidx.compose.material3.Switch
-import androidx.compose.material3.SwitchDefaults
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
 import androidx.compose.material3.rememberModalBottomSheetState
@@ -82,7 +72,6 @@ import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.scale
-import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.vector.ImageVector
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.res.vectorResource
@@ -95,19 +84,22 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import androidx.lifecycle.compose.collectAsStateWithLifecycle
 import com.pagzone.sonavi.R
 import com.pagzone.sonavi.model.SoundProfile
+import com.pagzone.sonavi.ui.component.CriticalToggle
 import com.pagzone.sonavi.ui.component.CustomMenuItem
 import com.pagzone.sonavi.ui.component.CustomSearchBar
 import com.pagzone.sonavi.ui.component.SoundFilterChips
-import com.pagzone.sonavi.ui.component.StepSequencer
-import com.pagzone.sonavi.ui.component.stepsToVibrationPattern
-import com.pagzone.sonavi.ui.theme.Amber50
+import com.pagzone.sonavi.ui.component.getStandardTapTargetDefinition
+import com.pagzone.sonavi.ui.component.ThresholdSlider
+import com.pagzone.sonavi.ui.component.VibrationPattern
 import com.pagzone.sonavi.util.Constants.Classifier.CONFIDENCE_THRESHOLD
 import com.pagzone.sonavi.util.Constants.SoundProfile.DEFAULT_VIBRATION_PATTERN
+import com.pagzone.sonavi.util.Helper.Companion.stepsToVibrationPattern
 import com.pagzone.sonavi.viewmodel.ProfileSettingsViewModel
 import com.pagzone.sonavi.viewmodel.SoundViewModel
+import com.psoffritti.taptargetcompose.TapTargetScope
 
 @Composable
-fun LibraryPage(
+fun TapTargetScope.LibraryPage(
     modifier: Modifier = Modifier,
     viewModel: SoundViewModel = hiltViewModel(),
     profileSettingsViewModel: ProfileSettingsViewModel = hiltViewModel()
@@ -171,6 +163,36 @@ fun LibraryPage(
         }
     }
 
+    val searchBarTapTarget = getStandardTapTargetDefinition(
+        precedence = 0,
+        title = "Search Sounds",
+        description = "Quickly find any sound by typing its name."
+    )
+
+    val filterTapTarget = getStandardTapTargetDefinition(
+        precedence = 1,
+        title = "Filter Sounds",
+        description = "Filter sounds by type. Try 'Critical' to see emergency sounds only!"
+    )
+
+    val quickActionsTapTarget = getStandardTapTargetDefinition(
+        precedence = 2,
+        title = "Quick Actions",
+        description = "See total sounds in current filter. Use this button to quickly enable or disable all sounds at once."
+    )
+
+    val soundCardTapTarget = getStandardTapTargetDefinition(
+        precedence = 3,
+        title = "Enable a Sound",
+        description = "Tap the sound card to enable or disable this sound. When enabled, Sonavi will detect this sound and vibrate your watch!"
+    )
+
+    val soundMenuTapTarget = getStandardTapTargetDefinition(
+        precedence = 4,
+        title = "Sound Options",
+        description = "Tap the menu to edit the sound profile or snooze it."
+    )
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -181,18 +203,21 @@ fun LibraryPage(
             onClearQuery = { query = "" },
             placeholder = {
                 Text("Search sounds...")
-            }
+            },
+            modifier = Modifier.tapTarget(searchBarTapTarget)
         )
 
         SoundFilterChips(
             filters = filters,
             selectedFilter = selectedFilter,
-            onFilterSelected = { selectedFilter = it }
+            onFilterSelected = { selectedFilter = it },
+            modifier = Modifier.tapTarget(filterTapTarget)
         )
 
         // Stats and Toggle All Section
         if (filteredSounds.isNotEmpty()) {
             StatsAndToggleSection(
+                modifier = Modifier.tapTarget(quickActionsTapTarget),
                 soundCount = filteredSounds.size,
                 allEnabled = allEnabled,
                 onToggleAllClick = onToggleAllClick
@@ -203,6 +228,8 @@ fun LibraryPage(
 
         // Sound List
         SoundList(
+            modifier = Modifier.tapTarget(soundCardTapTarget),
+            soundMenuModifier = Modifier.tapTarget(soundMenuTapTarget),
             sounds = filteredSounds,
             snoozeStatuses = snoozeStatuses,
             onToggleSound = viewModel::setSoundProfileEnabled,
@@ -352,18 +379,18 @@ private fun SoundList(
     onEditSound: (SoundProfile) -> Unit,
     onSnoozeSound: (SoundProfile) -> Unit,
     onUnsnoozeSound: (SoundProfile) -> Unit,
-    onDeleteSound: (SoundProfile) -> Unit
+    onDeleteSound: (SoundProfile) -> Unit,
+    modifier: Modifier = Modifier,
+    soundMenuModifier: Modifier = Modifier
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
-        items(
-            items = sounds,
-            key = { it.id },
-            contentType = { "sound_card" }
-        ) { sound ->
+        itemsIndexed(sounds) { index, sound ->
             SoundCard(
+                modifier = if (index == 0) modifier else Modifier,
+                soundMenuModifier = if (index == 0) soundMenuModifier else Modifier,
                 sound = sound,
                 onToggleClick = { enabled ->
                     onToggleSound(sound.id, enabled)
@@ -387,10 +414,11 @@ private fun SoundList(
 private fun StatsAndToggleSection(
     soundCount: Int,
     allEnabled: Boolean,
-    onToggleAllClick: () -> Unit
+    onToggleAllClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(bottom = 4.dp),
         colors = CardDefaults.cardColors(
@@ -881,8 +909,6 @@ fun EditModalSheet(
     var soundThreshold by remember { mutableFloatStateOf(soundProfile.threshold) }
     var vibrationPattern by remember { mutableStateOf(soundProfile.vibrationPattern) }
     var selectedCooldown by remember { mutableIntStateOf(soundProfile.emergencyCooldownMinutes) }
-    var showCriticalDialog by remember { mutableStateOf(false) }
-    var dontShowAgain by remember { mutableStateOf(false) }
     var showHelp by remember { mutableStateOf(false) }
 
     val settings by profileSettingsViewModel.settings.collectAsStateWithLifecycle()
@@ -899,13 +925,6 @@ fun EditModalSheet(
         name != soundProfile.displayName || isCriticalSoundEnabled != soundProfile.isCritical ||
                 soundThreshold != soundProfile.threshold || vibrationPattern != soundProfile.vibrationPattern ||
                 (soundProfile.isCritical && selectedCooldown != soundProfile.emergencyCooldownMinutes)
-
-    // Animation states for micro-interactions
-    val switchScale by animateFloatAsState(
-        targetValue = if (isCriticalSoundEnabled) 1.05f else 1f,
-        animationSpec = spring(dampingRatio = Spring.DampingRatioMediumBouncy),
-        label = "switch_scale"
-    )
 
     if (showSheet) {
         ModalBottomSheet(
@@ -1075,105 +1094,23 @@ fun EditModalSheet(
                         shape = RoundedCornerShape(16.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
-                        Column {
-                            Column(
-                                modifier = Modifier
-                                    .fillMaxWidth()
-                                    .padding(20.dp)
-                            ) {
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth(),
-                                    horizontalArrangement = Arrangement.SpaceBetween,
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically
-                                    ) {
-                                        Icon(
-                                            imageVector = if (isCriticalSoundEnabled)
-                                                ImageVector.vectorResource(R.drawable.ic_emergency_home_filled) else
-                                                ImageVector.vectorResource(R.drawable.ic_emergency_home),
-                                            contentDescription = null,
-                                            tint = if (isCriticalSoundEnabled) MaterialTheme.colorScheme.primary else MaterialTheme.colorScheme.onSurfaceVariant,
-                                            modifier = Modifier.size(20.dp)
-                                        )
-
-                                        Spacer(modifier = Modifier.width(12.dp))
-
-                                        Column {
-                                            Text(
-                                                text = "Critical Sound",
-                                                style = MaterialTheme.typography.titleMedium,
-                                                fontWeight = FontWeight.Medium,
-                                                color = MaterialTheme.colorScheme.onSurface
-                                            )
-
-                                            Text(
-                                                text = if (isCriticalSoundEnabled) "Enabled" else "Disabled",
-                                                style = MaterialTheme.typography.bodySmall,
-                                                color = MaterialTheme.colorScheme.onSurfaceVariant
-                                            )
-                                        }
-                                    }
-
-                                    Switch(
-                                        checked = isCriticalSoundEnabled,
-                                        onCheckedChange = {
-                                            if (it) {
-                                                if (settings.shouldShowCriticalInfoDialog)
-                                                    showCriticalDialog = true
-                                                else isCriticalSoundEnabled = true
-                                            } else isCriticalSoundEnabled = false
-                                        },
-                                        modifier = Modifier.scale(switchScale),
-                                        colors = SwitchDefaults.colors(
-                                            checkedThumbColor = Color.White,
-                                            checkedTrackColor = MaterialTheme.colorScheme.primary,
-                                            uncheckedThumbColor = Color.White,
-                                            uncheckedTrackColor = MaterialTheme.colorScheme.outline.copy(
-                                                alpha = 0.5f
-                                            )
-                                        )
-                                    )
-                                }
-
-                                Spacer(modifier = Modifier.height(12.dp))
-
-                                HelpCard(
-                                    showHelp = showHelp,
-                                    text = "Enable emergency SMS alerts to your contacts when this sound is detected." +
-                                            " A cooldown prevents spam during continuous detection."
-                                )
-                            }
-
-                            // Cooldown selection - shows when critical is enabled
-                            AnimatedVisibility(
-                                visible = isCriticalSoundEnabled,
-                                enter = expandVertically() + fadeIn(),
-                                exit = shrinkVertically() + fadeOut()
-                            ) {
-                                Column {
-                                    HorizontalDivider(
-                                        modifier = Modifier.padding(horizontal = 20.dp),
-                                        color = MaterialTheme.colorScheme.outline.copy(alpha = 0.2f)
-                                    )
-
-                                    EmergencyCooldownSelector(
-                                        selectedCooldown = selectedCooldown,
-                                        onCooldownChanged = { selectedCooldown = it },
-                                        modifier = Modifier.padding(20.dp)
-                                    )
-                                }
-                            }
-                        }
+                        CriticalToggle(
+                            isCriticalEnabled = isCriticalSoundEnabled,
+                            selectedCooldown = selectedCooldown,
+                            onCriticalChanged = { isCriticalSoundEnabled = it },
+                            onCooldownChanged = { selectedCooldown = it },
+                            shouldShowCriticalInfoDialog = settings.shouldShowCriticalInfoDialog,
+                            modifier = Modifier.padding(20.dp),
+                            onDontShowAgainClick = {
+                                profileSettingsViewModel.updateShouldShowCriticalInfoDialog(false)
+                            },
+                            showHelp = showHelp
+                        )
                     }
                 }
 
                 // Sound detection threshold slider
                 item {
-                    val confidenceThreshold = CONFIDENCE_THRESHOLD
-
                     Card(
                         modifier = Modifier.fillMaxWidth(),
                         colors = CardDefaults.cardColors(
@@ -1182,178 +1119,12 @@ fun EditModalSheet(
                         shape = RoundedCornerShape(16.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(20.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(R.drawable.ic_music_note),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-
-                                Spacer(modifier = Modifier.width(12.dp))
-
-                                Column(
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(
-                                        text = "Detection Threshold",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-
-                                    Text(
-                                        text = "Controls how strict sound detection is",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                                    )
-                                }
-
-                                // Value display and reset button in a row
-                                Column(
-                                    horizontalAlignment = Alignment.CenterHorizontally,
-                                    verticalArrangement = Arrangement.spacedBy(8.dp)
-                                ) {
-                                    Surface(
-                                        shape = RoundedCornerShape(8.dp),
-                                        color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f)
-                                    ) {
-                                        Text(
-                                            text = "${(soundThreshold * 100).toInt()}%",
-                                            style = MaterialTheme.typography.labelLarge,
-                                            color = MaterialTheme.colorScheme.primary,
-                                            fontWeight = FontWeight.Bold,
-                                            modifier = Modifier.padding(
-                                                horizontal = 12.dp,
-                                                vertical = 6.dp
-                                            )
-                                        )
-                                    }
-                                    // Reset button
-                                    if (soundThreshold != confidenceThreshold)
-                                        Surface(
-                                            onClick = { soundThreshold = confidenceThreshold },
-                                            shape = CircleShape,
-                                            color = MaterialTheme.colorScheme.secondaryContainer.copy(
-                                                alpha = 0.8f
-                                            ),
-                                            modifier = Modifier.size(28.dp)
-                                        ) {
-                                            Box(
-                                                contentAlignment = Alignment.Center
-                                            ) {
-                                                Icon(
-                                                    imageVector = ImageVector.vectorResource(R.drawable.ic_reset),
-                                                    contentDescription = "Reset to default",
-                                                    tint = MaterialTheme.colorScheme.onSecondaryContainer,
-                                                    modifier = Modifier.size(14.dp)
-                                                )
-                                            }
-                                        }
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Column {
-                                Row(
-                                    modifier = Modifier.fillMaxWidth(),
-                                    verticalAlignment = Alignment.CenterVertically
-                                ) {
-                                    Text(
-                                        text = "Low",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontWeight = FontWeight.Medium
-                                    )
-
-                                    Slider(
-                                        value = soundThreshold,
-                                        onValueChange = { soundThreshold = it },
-                                        valueRange = 0.01f..1f,
-                                        modifier = Modifier
-                                            .weight(1f)
-                                            .padding(horizontal = 16.dp),
-                                        colors = SliderDefaults.colors(
-                                            thumbColor = MaterialTheme.colorScheme.primary,
-                                            activeTrackColor = MaterialTheme.colorScheme.primary,
-                                            inactiveTrackColor = MaterialTheme.colorScheme.outline.copy(
-                                                alpha = 0.2f
-                                            )
-                                        )
-                                    )
-
-                                    Text(
-                                        text = "High",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-
-                                // Threshold indicators
-                                Row(
-                                    modifier = Modifier
-                                        .fillMaxWidth()
-                                        .padding(horizontal = 32.dp),
-                                    horizontalArrangement = Arrangement.SpaceBetween
-                                ) {
-                                    Text(
-                                        text = "1",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                            alpha = 0.6f
-                                        )
-                                    )
-
-                                    Text(
-                                        text = "25",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                            alpha = 0.6f
-                                        )
-                                    )
-
-                                    Text(
-                                        text = "50",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                            alpha = 0.6f
-                                        )
-                                    )
-
-                                    Text(
-                                        text = "75",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                            alpha = 0.6f
-                                        )
-                                    )
-
-                                    Text(
-                                        text = "100",
-                                        style = MaterialTheme.typography.labelSmall,
-                                        color = MaterialTheme.colorScheme.onSurfaceVariant.copy(
-                                            alpha = 0.6f
-                                        )
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            HelpCard(
-                                showHelp = showHelp,
-                                text = "Controls detection sensitivity." +
-                                        " Lower values detect more easily but may increase false alerts." +
-                                        " Higher values are stricter but may miss some sounds."
-                            )
-                        }
+                        ThresholdSlider(
+                            initialValue = soundProfile.threshold,
+                            onThresholdChange = { soundThreshold = it },
+                            modifier = Modifier.padding(20.dp),
+                            showHelp = showHelp
+                        )
                     }
                 }
 
@@ -1367,184 +1138,24 @@ fun EditModalSheet(
                         shape = RoundedCornerShape(16.dp),
                         elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
                     ) {
-                        Column(
-                            modifier = Modifier.padding(20.dp)
-                        ) {
-                            Row(
-                                verticalAlignment = Alignment.CenterVertically
-                            ) {
-                                Icon(
-                                    imageVector = ImageVector.vectorResource(R.drawable.ic_watch_vibration),
-                                    contentDescription = null,
-                                    tint = MaterialTheme.colorScheme.primary,
-                                    modifier = Modifier.size(20.dp)
-                                )
-
-                                Spacer(modifier = Modifier.width(12.dp))
-
-                                Column(
-                                    modifier = Modifier.weight(1f)
-                                ) {
-                                    Text(
-                                        text = "Vibration Pattern",
-                                        style = MaterialTheme.typography.titleMedium,
-                                        fontWeight = FontWeight.Medium,
-                                        color = MaterialTheme.colorScheme.onSurface
-                                    )
-
-                                    Text(
-                                        text = "Currently using: $selectedVibrationPattern",
-                                        style = MaterialTheme.typography.bodySmall,
-                                        color = MaterialTheme.colorScheme.primary,
-                                        fontWeight = FontWeight.Medium
-                                    )
-                                }
-
-                                // Current selection indicator
-                                Surface(
-                                    shape = CircleShape,
-                                    color = MaterialTheme.colorScheme.primary.copy(alpha = 0.1f),
-                                    modifier = Modifier.size(8.dp)
-                                ) {}
+                        VibrationPattern(
+                            modifier = Modifier.padding(20.dp),
+                            initialVibrationPattern = soundProfile.vibrationPattern,
+                            selectedVibrationPattern = selectedVibrationPattern,
+                            showHelp = showHelp,
+                            onVibrationPatternChanged = {
+                                vibrationPattern =
+                                    stepsToVibrationPattern(it, 200).toList()
+                            },
+                            onDefaultVibrationClick = {
+                                selectedVibrationPattern = "Default"
+                                vibrationPattern = DEFAULT_VIBRATION_PATTERN
+                            },
+                            onCustomVibrationClick = {
+                                selectedVibrationPattern = "Custom"
+                                vibrationPattern = emptyList()
                             }
-
-                            Spacer(modifier = Modifier.height(16.dp))
-
-                            Row(
-                                modifier = Modifier.fillMaxWidth(),
-                                horizontalArrangement = Arrangement.spacedBy(12.dp)
-                            ) {
-                                // Default button with selection state
-                                val isDefaultSelected = selectedVibrationPattern == "Default"
-
-                                Button(
-                                    onClick = {
-                                        selectedVibrationPattern = "Default"
-                                        vibrationPattern = DEFAULT_VIBRATION_PATTERN
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = if (isDefaultSelected) {
-                                        ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = Color.White
-                                        )
-                                    } else {
-                                        ButtonDefaults.outlinedButtonColors(
-                                            containerColor = Color.Transparent,
-                                            contentColor = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    },
-                                    border = if (!isDefaultSelected) {
-                                        BorderStroke(
-                                            1.dp,
-                                            MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                                        )
-                                    } else null
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        if (isDefaultSelected) {
-                                            Icon(
-                                                imageVector = Icons.Default.Check,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                        }
-
-                                        Text(
-                                            text = "Default",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                    }
-                                }
-
-                                // Custom button with selection state
-                                val isCustomSelected = selectedVibrationPattern == "Custom"
-
-                                Button(
-                                    onClick = {
-                                        selectedVibrationPattern = "Custom"
-                                        /* Handle create/select custom vibration */
-                                    },
-                                    modifier = Modifier.weight(1f),
-                                    shape = RoundedCornerShape(12.dp),
-                                    colors = if (isCustomSelected) {
-                                        ButtonDefaults.buttonColors(
-                                            containerColor = MaterialTheme.colorScheme.primary,
-                                            contentColor = Color.White
-                                        )
-                                    } else {
-                                        ButtonDefaults.outlinedButtonColors(
-                                            containerColor = Color.Transparent,
-                                            contentColor = MaterialTheme.colorScheme.onSurface
-                                        )
-                                    },
-                                    border = if (!isCustomSelected) {
-                                        BorderStroke(
-                                            1.dp,
-                                            MaterialTheme.colorScheme.outline.copy(alpha = 0.5f)
-                                        )
-                                    } else null
-                                ) {
-                                    Row(
-                                        verticalAlignment = Alignment.CenterVertically,
-                                        horizontalArrangement = Arrangement.spacedBy(6.dp)
-                                    ) {
-                                        if (isCustomSelected) {
-                                            Icon(
-                                                imageVector = Icons.Default.Check,
-                                                contentDescription = null,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                        } else {
-                                            Icon(
-                                                imageVector = ImageVector.vectorResource(R.drawable.ic_add),
-                                                contentDescription = null,
-                                                modifier = Modifier.size(14.dp)
-                                            )
-                                        }
-
-                                        Text(
-                                            text = "Custom",
-                                            style = MaterialTheme.typography.labelMedium,
-                                            fontWeight = FontWeight.Medium
-                                        )
-                                    }
-                                }
-                            }
-
-                            // Show additional info when custom is selected
-                            AnimatedVisibility(
-                                visible = selectedVibrationPattern == "Custom",
-                                enter = expandVertically() + fadeIn(),
-                                exit = shrinkVertically() + fadeOut()
-                            ) {
-                                Column {
-                                    Spacer(modifier = Modifier.height(12.dp))
-
-                                    StepSequencer(
-                                        initialPattern = if (isDefaultVibrationPattern) null else soundProfile.vibrationPattern,
-                                        onPatternChanged = {
-                                            vibrationPattern =
-                                                stepsToVibrationPattern(it, 200).toList()
-                                        }
-                                    )
-                                }
-                            }
-
-                            Spacer(modifier = Modifier.height(12.dp))
-
-                            HelpCard(
-                                showHelp = showHelp,
-                                text = "Default: Uses a standard vibration pattern for this sound.\n" +
-                                        "Custom: Create a unique vibration rhythm. Each step is 200ms." +
-                                        " Activate steps to build your pattern (max 4.8 seconds total)."
-                            )
-                        }
+                        )
                     }
                 }
 
@@ -1615,70 +1226,6 @@ fun EditModalSheet(
                 }
             }
         }
-
-        if (showCriticalDialog) {
-            AlertDialog(
-                onDismissRequest = { showCriticalDialog = false },
-                icon = {
-                    Icon(
-                        imageVector = ImageVector.vectorResource(R.drawable.ic_triangle_alert),
-                        contentDescription = null,
-                        tint = Amber50
-                    )
-                },
-                title = {
-                    Text("Enable Critical Sound?")
-                },
-                text = {
-                    Column(verticalArrangement = Arrangement.spacedBy(12.dp)) {
-                        Text(
-                            text = "This will send automatic SMS alerts to your emergency contacts when this sound is detected.",
-                            style = MaterialTheme.typography.bodyMedium
-                        )
-
-                        Text(
-                            text = "Please inform your contacts that they may receive automated safety alerts from your number.",
-                            style = MaterialTheme.typography.bodyMedium,
-                            fontWeight = FontWeight.Medium
-                        )
-
-                        Row(
-                            verticalAlignment = Alignment.CenterVertically,
-                            modifier = Modifier
-                                .fillMaxWidth()
-                                .clickable { dontShowAgain = !dontShowAgain }
-                        ) {
-                            Checkbox(
-                                checked = dontShowAgain,
-                                onCheckedChange = { dontShowAgain = it }
-                            )
-                            Text(
-                                text = "Don't show again",
-                                style = MaterialTheme.typography.bodySmall
-                            )
-                        }
-                    }
-                },
-                confirmButton = {
-                    TextButton(
-                        onClick = {
-                            if (dontShowAgain) {
-                                profileSettingsViewModel.updateShouldShowCriticalInfoDialog(false)
-                            }
-                            isCriticalSoundEnabled = true
-                            showCriticalDialog = false
-                        }
-                    ) {
-                        Text("Enable")
-                    }
-                },
-                dismissButton = {
-                    TextButton(onClick = { showCriticalDialog = false }) {
-                        Text("Cancel")
-                    }
-                }
-            )
-        }
     }
 }
 
@@ -1729,6 +1276,7 @@ fun HelpCard(
 fun SoundCard(
     sound: SoundProfile,
     modifier: Modifier = Modifier,
+    soundMenuModifier: Modifier = Modifier,
     isSnoozed: Boolean = false,
     onToggleClick: (enabled: Boolean) -> Unit = {},
     onUnsnoozeClick: () -> Unit = {},
@@ -1974,7 +1522,7 @@ fun SoundCard(
             Box {
                 IconButton(
                     onClick = { showMenu = true },
-                    modifier = Modifier.size(32.dp)
+                    modifier = soundMenuModifier.size(32.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.MoreVert,
@@ -2031,92 +1579,6 @@ fun SoundCard(
                         )
                     }
                 }
-            }
-        }
-    }
-}
-
-@Composable
-private fun EmergencyCooldownSelector(
-    selectedCooldown: Int,
-    onCooldownChanged: (Int) -> Unit,
-    modifier: Modifier = Modifier
-) {
-    val cooldownOptions = listOf(1, 2, 5, 10, 15, 30, 60)
-    val currentIndex = cooldownOptions.indexOf(selectedCooldown).takeIf { it >= 0 } ?: 2
-
-    Row(
-        modifier = modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(8.dp)
-        ) {
-            Icon(
-                imageVector = ImageVector.vectorResource(R.drawable.ic_timer),
-                contentDescription = null,
-                tint = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.size(16.dp)
-            )
-            Text(
-                text = "Message Cooldown",
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Normal
-                ),
-                color = MaterialTheme.colorScheme.onSurface
-            )
-        }
-
-        Row(
-            verticalAlignment = Alignment.CenterVertically,
-            horizontalArrangement = Arrangement.spacedBy(6.dp)
-        ) {
-            IconButton(
-                onClick = {
-                    if (currentIndex > 0) {
-                        onCooldownChanged(cooldownOptions[currentIndex - 1])
-                    }
-                },
-                enabled = currentIndex > 0,
-                modifier = Modifier.size(24.dp)
-            ) {
-                Icon(
-                    imageVector = ImageVector.vectorResource(R.drawable.ic_remove),
-                    contentDescription = "Decrease",
-                    modifier = Modifier.size(18.dp)
-                )
-            }
-
-            Text(
-                text = when (selectedCooldown) {
-                    60 -> "1h"
-                    1 -> "1m"
-                    else -> "${selectedCooldown}m"
-                },
-                style = MaterialTheme.typography.labelMedium.copy(
-                    fontWeight = FontWeight.Medium
-                ),
-                color = MaterialTheme.colorScheme.primary,
-                modifier = Modifier.defaultMinSize(minWidth = 32.dp),
-                textAlign = TextAlign.Center
-            )
-
-            IconButton(
-                onClick = {
-                    if (currentIndex < cooldownOptions.size - 1) {
-                        onCooldownChanged(cooldownOptions[currentIndex + 1])
-                    }
-                },
-                enabled = currentIndex < cooldownOptions.size - 1,
-                modifier = Modifier.size(24.dp)
-            ) {
-                Icon(
-                    imageVector = Icons.Default.Add,
-                    contentDescription = "Increase",
-                    modifier = Modifier.size(18.dp)
-                )
             }
         }
     }

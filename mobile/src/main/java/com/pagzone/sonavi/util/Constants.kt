@@ -11,10 +11,12 @@ class Constants {
     }
     object Classifier {
         const val CONFIDENCE_THRESHOLD = 0.5f // 50% confidence
+        const val CUSTOM_CONFIDENCE_THRESHOLD = 0.7f
         const val SMOOTHING_ALPHA = 0.75f
     }
     object SoundProfile {
         val DEFAULT_VIBRATION_PATTERN = listOf<Long>(0, 300, 1000, 300)
+        const val DEFAULT_EMERGENCY_COOLDOWN_IN_MINUTES = 5
     }
     object Capabilities {
         const val WEAR_CAPABILITY = "wear"

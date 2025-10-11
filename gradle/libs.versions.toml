@@ -1,10 +1,12 @@
 [versions]
 agp = "8.12.3"
 core = "2.5"
+coreVersion = "1.2.1"
 datastorePreferences = "1.1.7"
 gson = "2.13.2"
 hiltAndroid = "2.57.1"
 hiltNavigationFragment = "1.2.0"
+jtransforms = "3.1"
 kotlin = "2.2.0"
 kotlin_speech_features = "1.0.0"
 ksp = "2.2.0-2.0.2"
@@ -47,6 +49,7 @@ core = { module = "be.tarsos.dsp:core", version.ref = "core" }
 gson = { module = "com.google.code.gson:gson", version.ref = "gson" }
 hilt-android = { module = "com.google.dagger:hilt-android", version.ref = "hiltAndroid" }
 hilt-android-compiler = { module = "com.google.dagger:hilt-android-compiler", version.ref = "hiltAndroid" }
+jtransforms = { module = "com.github.wendykierp:JTransforms", version.ref = "jtransforms" }
 junit = { group = "junit", name = "junit", version.ref = "junit" }
 androidx-junit = { group = "androidx.test.ext", name = "junit", version.ref = "junitVersion" }
 androidx-espresso-core = { group = "androidx.test.espresso", name = "espresso-core", version.ref = "espressoCore" }
@@ -77,6 +80,7 @@ androidx-compose-material3 = { group = "androidx.wear.compose", name = "compose-
 androidx-lifecycle-service = { group = "androidx.lifecycle", name = "lifecycle-service", version.ref = "lifecycleService" }
 androidx-databinding-adapters = { group = "androidx.databinding", name = "databinding-adapters", version.ref = "databindingAdapters" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+taptargetcompose-core = { module = "com.pierfrancescosoffritti.taptargetcompose:core", version.ref = "coreVersion" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

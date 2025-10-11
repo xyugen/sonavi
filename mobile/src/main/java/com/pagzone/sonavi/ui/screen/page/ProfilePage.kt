@@ -84,9 +84,11 @@ import androidx.hilt.navigation.compose.hiltViewModel
 import com.pagzone.sonavi.R
 import com.pagzone.sonavi.model.EmergencyContact
 import com.pagzone.sonavi.ui.component.CustomMenuItem
+import com.pagzone.sonavi.ui.component.getStandardTapTargetDefinition
 import com.pagzone.sonavi.ui.theme.Lime50
 import com.pagzone.sonavi.viewmodel.EmergencyContactViewModel
 import com.pagzone.sonavi.viewmodel.ProfileSettingsViewModel
+import com.psoffritti.taptargetcompose.TapTargetScope
 
 fun Context.getContactInfo(uri: Uri): EmergencyContact? {
     contentResolver.query(uri, null, null, null, null)?.use { cursor ->
@@ -122,7 +124,7 @@ fun Context.getContactInfo(uri: Uri): EmergencyContact? {
 }
 
 @Composable
-fun ProfilePage(
+fun TapTargetScope.ProfilePage(
     modifier: Modifier = Modifier,
     viewModel: EmergencyContactViewModel = hiltViewModel()
 ) {
@@ -133,12 +135,35 @@ fun ProfilePage(
         ImageVector.vectorResource(id = R.drawable.ic_filter_a_z) else
         ImageVector.vectorResource(id = R.drawable.ic_filter_z_a)
 
+    val userCardTapTarget = getStandardTapTargetDefinition(
+        precedence = 0,
+        title = "Your Information",
+        description = "Your name and address will be included in emergency SMS messages to help contacts locate you.",
+    )
+
+    val includeLocationTapTarget = getStandardTapTargetDefinition(
+        precedence = 1,
+        title = "Share Your Location",
+        description = "When ON, your real-time GPS coordinates will be included in emergency messages.",
+    )
+
+    val emergencyContactsTapTarget = getStandardTapTargetDefinition(
+        precedence = 2,
+        title = "Emergency Contacts",
+        description = "Add trusted contacts who will receive SMS alerts when critical sounds are detected. You can import from your contacts.",
+    )
+
     Column(
         modifier = modifier
             .fillMaxSize()
             .padding(top = 12.dp)
     ) {
-        ProfileCard()
+        Column {
+            ProfileCard(
+                profileCardModifier = Modifier.tapTarget(userCardTapTarget),
+                includeLocationModifier = Modifier.tapTarget(includeLocationTapTarget)
+            )
+        }
 
         Spacer(modifier = Modifier.height(12.dp))
 
@@ -176,8 +201,9 @@ fun ProfilePage(
             ) {
                 item {
                     AddContactButton(
-                        viewModel,
-                        emergencyContacts
+                        modifier = Modifier.tapTarget(emergencyContactsTapTarget),
+                        viewModel = viewModel,
+                        emergencyContacts = emergencyContacts
                     )
                 }
 
@@ -499,6 +525,8 @@ fun EmergencyContactCard(
 @Composable
 fun ProfileCard(
     modifier: Modifier = Modifier,
+    profileCardModifier: Modifier = Modifier,
+    includeLocationModifier: Modifier = Modifier,
     profileViewModel: ProfileSettingsViewModel = hiltViewModel()
 ) {
     val profileSettings by profileViewModel.profileSettings.collectAsState()
@@ -522,7 +550,7 @@ fun ProfileCard(
         ) {
             // Profile Info Card
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = profileCardModifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
                     containerColor = MaterialTheme.colorScheme.primary,
                     contentColor = MaterialTheme.colorScheme.onPrimary,
@@ -586,7 +614,7 @@ fun ProfileCard(
 
             // Location Toggle Card
             Card(
-                modifier = Modifier.fillMaxWidth(),
+                modifier = includeLocationModifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
                     containerColor = if (sendLocation)
                         MaterialTheme.colorScheme.primaryContainer.copy(alpha = 0.5f)

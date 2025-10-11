@@ -15,8 +15,8 @@ android {
         applicationId = "com.pagzone.sonavi"
         minSdk = 27
         targetSdk = 35
-        versionCode = 1
-        versionName = "1.0.1"
+        versionCode = 2
+        versionName = "1.1.0"
 
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
@@ -98,4 +98,9 @@ dependencies {
 
     // https://mvnrepository.com/artifact/com.google.code.gson/gson
     implementation(libs.gson)
+
+    implementation(libs.jtransforms)
+
+    // https://github.com/PierfrancescoSoffritti/tap-target-compose
+    implementation(libs.taptargetcompose.core)
 }
