@@ -1589,9 +1589,9 @@ fun HelpDialog(onDismiss: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium
                 )
 
-                Spacer(Modifier.height(4.dp))
-
                 BulletPoint("Accepts MP3, M4A, WAV, OGG, FLAC")
+
+                Spacer(Modifier.height(4.dp))
 
                 Text(
                     text = "Duration:",
