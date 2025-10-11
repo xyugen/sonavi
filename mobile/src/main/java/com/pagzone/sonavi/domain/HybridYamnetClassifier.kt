@@ -122,9 +122,9 @@ class HybridYamnetClassifier(
         // Classify environment type
         environmentProfile.environmentType = when {
             environmentProfile.avgNoiseLevel < 0.02f -> EnvironmentType.VERY_QUIET
-            environmentProfile.avgNoiseLevel < 0.05f -> EnvironmentType.QUIET
-            environmentProfile.avgNoiseLevel < 0.12f -> EnvironmentType.NORMAL
-            environmentProfile.avgNoiseLevel < 0.25f -> EnvironmentType.NOISY
+            environmentProfile.avgNoiseLevel < 0.030f -> EnvironmentType.QUIET
+            environmentProfile.avgNoiseLevel < 0.05f -> EnvironmentType.NORMAL
+            environmentProfile.avgNoiseLevel < 0.085f -> EnvironmentType.NOISY
             else -> EnvironmentType.VERY_NOISY
         }
 

@@ -1163,6 +1163,7 @@ private fun SoundDetailsStep(
                 ThresholdSlider(
                     modifier = soundThresholdModifier.padding(20.dp),
                     initialValue = soundThreshold,
+                    resetValue = CUSTOM_CONFIDENCE_THRESHOLD,
                     onThresholdChange = onSoundThresholdChange
                 )
             }
@@ -1589,9 +1590,9 @@ fun HelpDialog(onDismiss: () -> Unit) {
                     style = MaterialTheme.typography.bodyMedium
                 )
 
-                Spacer(Modifier.height(4.dp))
-
                 BulletPoint("Accepts MP3, M4A, WAV, OGG, FLAC")
+
+                Spacer(Modifier.height(4.dp))
 
                 Text(
                     text = "Duration:",
