@@ -95,7 +95,7 @@ fun ThresholdSlider(
                     )
                 }
                 // Reset button
-                if (soundThreshold != initialValue)
+                if (soundThreshold != CONFIDENCE_THRESHOLD)
                     Surface(
                         onClick = { soundThreshold = CONFIDENCE_THRESHOLD },
                         shape = CircleShape,

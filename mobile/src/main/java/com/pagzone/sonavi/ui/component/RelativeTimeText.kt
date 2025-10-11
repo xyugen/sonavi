@@ -35,7 +35,7 @@ fun RelativeTimeText(
                 timestamp, System.currentTimeMillis(), DateUtils.SECOND_IN_MILLIS
             ).toString()
 
-            delay(60_000_000) // update every minute
+            delay(60_000) // update every minute
         }
     }
 
