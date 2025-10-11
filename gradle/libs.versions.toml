@@ -1,6 +1,7 @@
 [versions]
 agp = "8.12.3"
 core = "2.5"
+coreVersion = "1.2.1"
 datastorePreferences = "1.1.7"
 gson = "2.13.2"
 hiltAndroid = "2.57.1"
@@ -79,6 +80,7 @@ androidx-compose-material3 = { group = "androidx.wear.compose", name = "compose-
 androidx-lifecycle-service = { group = "androidx.lifecycle", name = "lifecycle-service", version.ref = "lifecycleService" }
 androidx-databinding-adapters = { group = "androidx.databinding", name = "databinding-adapters", version.ref = "databindingAdapters" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }
+taptargetcompose-core = { module = "com.pierfrancescosoffritti.taptargetcompose:core", version.ref = "coreVersion" }
 
 [plugins]
 android-application = { id = "com.android.application", version.ref = "agp" }

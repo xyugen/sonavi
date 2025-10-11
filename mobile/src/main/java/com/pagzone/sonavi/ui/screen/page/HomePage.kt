@@ -55,15 +55,17 @@ import com.pagzone.sonavi.R
 import com.pagzone.sonavi.model.ClassificationResult
 import com.pagzone.sonavi.model.SoundStats
 import com.pagzone.sonavi.ui.component.RelativeTimeText
+import com.pagzone.sonavi.ui.component.getStandardTapTargetDefinition
 import com.pagzone.sonavi.ui.theme.Amber50
 import com.pagzone.sonavi.ui.theme.Green50
 import com.pagzone.sonavi.ui.theme.Red50
 import com.pagzone.sonavi.viewmodel.ClassificationResultViewModel
 import com.pagzone.sonavi.viewmodel.ClientDataViewModel
+import com.psoffritti.taptargetcompose.TapTargetScope
 import kotlin.math.roundToInt
 
 @Composable
-fun HomePage(
+fun TapTargetScope.HomePage(
     modifier: Modifier = Modifier,
     viewModel: ClientDataViewModel = viewModel(),
     classificationViewModel: ClassificationResultViewModel = viewModel()
@@ -96,6 +98,24 @@ fun HomePage(
         }
     }
 
+    val connectionStatusTapTarget = getStandardTapTargetDefinition(
+        precedence = 0,
+        title = "Watch Connection Status",
+        description = "This shows if your smartwatch is connected. Make sure Sonavi is open on your watch!",
+    )
+
+    val overviewTapTarget = getStandardTapTargetDefinition(
+        precedence = 1,
+        title = "Overview",
+        description = "Track how many sounds have been detected during this session."
+    )
+
+    val recentActivityTapTarget = getStandardTapTargetDefinition(
+        precedence = 2,
+        title = "Recent Activity",
+        description = "See the last 15 detected sounds with their confidence level and timestamp."
+    )
+
     LazyColumn(
         modifier = modifier.fillMaxSize(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
@@ -103,6 +123,7 @@ fun HomePage(
         // Hero Section with Welcome & Connection Status
         item {
             HeroSection(
+                modifier = Modifier.tapTarget(connectionStatusTapTarget),
                 viewModel = viewModel,
                 isConnected = isConnected,
                 onRetryClick = {
@@ -118,12 +139,16 @@ fun HomePage(
 
         // Stats Overview Card
         item {
-            StatsOverviewCard(stats = todayStats)
+            StatsOverviewCard(
+                modifier = Modifier.tapTarget(overviewTapTarget),
+                stats = todayStats
+            )
         }
 
         // Sound History Header with Enhanced Design
         item {
             SectionHeader(
+                modifier = Modifier.tapTarget(recentActivityTapTarget),
                 title = "Recent Activity",
                 subtitle = "${recentResults.size} sounds detected",
                 icon = R.drawable.ic_library_music
@@ -160,12 +185,13 @@ fun HomePage(
 private fun HeroSection(
     viewModel: ClientDataViewModel,
     isConnected: Boolean,
-    onRetryClick: () -> Unit
+    onRetryClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     val deviceName by viewModel.deviceName.collectAsStateWithLifecycle()
 
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(12.dp)
     ) {
         // Modern Status Card
@@ -382,9 +408,9 @@ private fun PulsingDot() {
 }
 
 @Composable
-private fun StatsOverviewCard(stats: SoundStats) {
+private fun StatsOverviewCard(stats: SoundStats, modifier: Modifier = Modifier) {
     Column(
-        modifier = Modifier.fillMaxWidth(),
+        modifier = modifier.fillMaxWidth(),
         verticalArrangement = Arrangement.spacedBy(16.dp)
     ) {
         // Header
@@ -495,9 +521,11 @@ private fun StatItem(
 private fun SectionHeader(
     title: String,
     subtitle: String,
-    icon: Int
+    icon: Int,
+    modifier: Modifier = Modifier
 ) {
     Row(
+        modifier = modifier,
         verticalAlignment = Alignment.CenterVertically
     ) {
         Icon(

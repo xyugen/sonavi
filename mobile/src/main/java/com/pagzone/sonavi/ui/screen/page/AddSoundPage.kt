@@ -94,6 +94,7 @@ import com.pagzone.sonavi.ui.component.CriticalToggle
 import com.pagzone.sonavi.ui.component.ThresholdSlider
 import com.pagzone.sonavi.ui.component.VibrationPattern
 import com.pagzone.sonavi.ui.component.VibrationPlayer
+import com.pagzone.sonavi.ui.component.getStandardTapTargetDefinition
 import com.pagzone.sonavi.ui.theme.Amber50
 import com.pagzone.sonavi.ui.theme.Lime50
 import com.pagzone.sonavi.ui.theme.Sky50
@@ -104,13 +105,14 @@ import com.pagzone.sonavi.util.Constants.SoundProfile.DEFAULT_VIBRATION_PATTERN
 import com.pagzone.sonavi.util.Helper.Companion.stepsToVibrationPattern
 import com.pagzone.sonavi.viewmodel.ProfileSettingsViewModel
 import com.pagzone.sonavi.viewmodel.SoundViewModel
+import com.psoffritti.taptargetcompose.TapTargetScope
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
 import kotlin.math.roundToInt
 
 @Preview(showBackground = true)
 @Composable
-fun AddSoundPage(
+fun TapTargetScope.AddSoundPage(
     modifier: Modifier = Modifier,
     viewModel: SoundViewModel = hiltViewModel(),
     profileSettingsViewModel: ProfileSettingsViewModel = hiltViewModel(),
@@ -228,10 +230,52 @@ fun AddSoundPage(
         recordingDuration = 0
     }
 
+    val scrollState = rememberScrollState()
+
+    fun scrollToBottom() {
+        coroutineScope.launch {
+            scrollState.animateScrollTo(
+                value = (scrollState.maxValue / 1.25).roundToInt()
+            )
+        }
+    }
+
+    val recordingTipsTapTarget = getStandardTapTargetDefinition(
+        precedence = 0,
+        title = "Recording Tips",
+        description = "Tap here anytime for best practices on recording and uploading sound samples."
+    )
+
+    val soundNameTapTarget = getStandardTapTargetDefinition(
+        precedence = 1,
+        title = "Name Your Sound",
+        description = "Give your sound a descriptive name like 'My Doorbell' or 'Baby Crying'."
+    )
+
+    val criticalTapTarget = getStandardTapTargetDefinition(
+        precedence = 2,
+        title = "Mark as Critical",
+        description = "Enable this to send emergency SMS alerts to your contacts when this sound is detected.",
+        onTargetClick = { scrollToBottom() },
+        onTargetCancel = { scrollToBottom() }
+    )
+
+    val thresholdTapTarget = getStandardTapTargetDefinition(
+        precedence = 3,
+        title = "Detection Sensitivity",
+        description = "Lower values detect sounds more easily. Higher values require stronger confidence. Start with 50 and adjust as needed."
+    )
+
+    val vibrationPatternTapTarget = getStandardTapTargetDefinition(
+        precedence = 4,
+        title = "Vibration Pattern",
+        description = "Choose a default pattern or create a custom one. You can test patterns before saving!"
+    )
+
     Column(
         modifier = modifier
             .fillMaxSize()
-            .verticalScroll(rememberScrollState()),
+            .verticalScroll(scrollState),
         verticalArrangement = Arrangement.spacedBy(20.dp)
     ) {
         Row(
@@ -247,6 +291,7 @@ fun AddSoundPage(
                 color = MaterialTheme.colorScheme.onBackground
             )
             IconButton(
+                modifier = Modifier.tapTarget(recordingTipsTapTarget),
                 onClick = { showHelpDialog = true },
                 colors = IconButtonDefaults.iconButtonColors(
                     contentColor = MaterialTheme.colorScheme.primary
@@ -277,6 +322,10 @@ fun AddSoundPage(
                         vibrationPattern = DEFAULT_VIBRATION_PATTERN
                     },
                     onCustomVibrationClick = { selectedVibrationPattern = "Custom" },
+                    soundNameModifier = Modifier.tapTarget(soundNameTapTarget),
+                    soundThresholdModifier = Modifier.tapTarget(thresholdTapTarget),
+                    isCriticalSoundModifier = Modifier.tapTarget(criticalTapTarget),
+                    vibrationPatternModifier = Modifier.tapTarget(vibrationPatternTapTarget),
                     onDontShowAgainClick = {
                         profileSettingsViewModel.updateShouldShowCriticalInfoDialog(
                             false
@@ -1042,6 +1091,10 @@ private fun SoundDetailsStep(
     onDontShowAgainClick: () -> Unit,
     onDefaultVibrationClick: () -> Unit = {},
     onCustomVibrationClick: () -> Unit = {},
+    soundNameModifier: Modifier = Modifier,
+    soundThresholdModifier: Modifier = Modifier,
+    isCriticalSoundModifier: Modifier = Modifier,
+    vibrationPatternModifier: Modifier = Modifier,
     onNext: () -> Unit,
     settings: Settings,
 ) {
@@ -1075,7 +1128,7 @@ private fun SoundDetailsStep(
                         color = MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.4f)
                     )
                 },
-                modifier = Modifier.fillMaxWidth(),
+                modifier = soundNameModifier.fillMaxWidth(),
                 singleLine = true,
                 shape = RoundedCornerShape(12.dp)
             )
@@ -1089,7 +1142,7 @@ private fun SoundDetailsStep(
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 CriticalToggle(
-                    modifier = Modifier.padding(20.dp),
+                    modifier = isCriticalSoundModifier.padding(20.dp),
                     isCriticalEnabled = isCriticalSoundEnabled,
                     selectedCooldown = selectedCooldown,
                     onCriticalChanged = onCriticalChange,
@@ -1108,7 +1161,7 @@ private fun SoundDetailsStep(
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 ThresholdSlider(
-                    modifier = Modifier.padding(20.dp),
+                    modifier = soundThresholdModifier.padding(20.dp),
                     initialValue = soundThreshold,
                     onThresholdChange = onSoundThresholdChange
                 )
@@ -1123,7 +1176,7 @@ private fun SoundDetailsStep(
                 elevation = CardDefaults.cardElevation(defaultElevation = 0.dp)
             ) {
                 VibrationPattern(
-                    modifier = Modifier.padding(20.dp),
+                    modifier = vibrationPatternModifier.padding(20.dp),
                     selectedVibrationPattern = selectedVibrationPattern,
                     onVibrationPatternChanged = {
                         val newVibrationPattern = stepsToVibrationPattern(it, 200).toList()

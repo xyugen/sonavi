@@ -29,7 +29,7 @@ import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
 import androidx.compose.foundation.lazy.grid.items
-import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
@@ -88,6 +88,7 @@ import com.pagzone.sonavi.ui.component.CriticalToggle
 import com.pagzone.sonavi.ui.component.CustomMenuItem
 import com.pagzone.sonavi.ui.component.CustomSearchBar
 import com.pagzone.sonavi.ui.component.SoundFilterChips
+import com.pagzone.sonavi.ui.component.getStandardTapTargetDefinition
 import com.pagzone.sonavi.ui.component.ThresholdSlider
 import com.pagzone.sonavi.ui.component.VibrationPattern
 import com.pagzone.sonavi.util.Constants.Classifier.CONFIDENCE_THRESHOLD
@@ -95,9 +96,10 @@ import com.pagzone.sonavi.util.Constants.SoundProfile.DEFAULT_VIBRATION_PATTERN
 import com.pagzone.sonavi.util.Helper.Companion.stepsToVibrationPattern
 import com.pagzone.sonavi.viewmodel.ProfileSettingsViewModel
 import com.pagzone.sonavi.viewmodel.SoundViewModel
+import com.psoffritti.taptargetcompose.TapTargetScope
 
 @Composable
-fun LibraryPage(
+fun TapTargetScope.LibraryPage(
     modifier: Modifier = Modifier,
     viewModel: SoundViewModel = hiltViewModel(),
     profileSettingsViewModel: ProfileSettingsViewModel = hiltViewModel()
@@ -161,6 +163,36 @@ fun LibraryPage(
         }
     }
 
+    val searchBarTapTarget = getStandardTapTargetDefinition(
+        precedence = 0,
+        title = "Search Sounds",
+        description = "Quickly find any sound by typing its name."
+    )
+
+    val filterTapTarget = getStandardTapTargetDefinition(
+        precedence = 1,
+        title = "Filter Sounds",
+        description = "Filter sounds by type. Try 'Critical' to see emergency sounds only!"
+    )
+
+    val quickActionsTapTarget = getStandardTapTargetDefinition(
+        precedence = 2,
+        title = "Quick Actions",
+        description = "See total sounds in current filter. Use this button to quickly enable or disable all sounds at once."
+    )
+
+    val soundCardTapTarget = getStandardTapTargetDefinition(
+        precedence = 3,
+        title = "Enable a Sound",
+        description = "Tap the sound card to enable or disable this sound. When enabled, Sonavi will detect this sound and vibrate your watch!"
+    )
+
+    val soundMenuTapTarget = getStandardTapTargetDefinition(
+        precedence = 4,
+        title = "Sound Options",
+        description = "Tap the menu to edit the sound profile or snooze it."
+    )
+
     Column(
         modifier = modifier
             .fillMaxSize()
@@ -171,18 +203,21 @@ fun LibraryPage(
             onClearQuery = { query = "" },
             placeholder = {
                 Text("Search sounds...")
-            }
+            },
+            modifier = Modifier.tapTarget(searchBarTapTarget)
         )
 
         SoundFilterChips(
             filters = filters,
             selectedFilter = selectedFilter,
-            onFilterSelected = { selectedFilter = it }
+            onFilterSelected = { selectedFilter = it },
+            modifier = Modifier.tapTarget(filterTapTarget)
         )
 
         // Stats and Toggle All Section
         if (filteredSounds.isNotEmpty()) {
             StatsAndToggleSection(
+                modifier = Modifier.tapTarget(quickActionsTapTarget),
                 soundCount = filteredSounds.size,
                 allEnabled = allEnabled,
                 onToggleAllClick = onToggleAllClick
@@ -193,6 +228,8 @@ fun LibraryPage(
 
         // Sound List
         SoundList(
+            modifier = Modifier.tapTarget(soundCardTapTarget),
+            soundMenuModifier = Modifier.tapTarget(soundMenuTapTarget),
             sounds = filteredSounds,
             snoozeStatuses = snoozeStatuses,
             onToggleSound = viewModel::setSoundProfileEnabled,
@@ -342,18 +379,18 @@ private fun SoundList(
     onEditSound: (SoundProfile) -> Unit,
     onSnoozeSound: (SoundProfile) -> Unit,
     onUnsnoozeSound: (SoundProfile) -> Unit,
-    onDeleteSound: (SoundProfile) -> Unit
+    onDeleteSound: (SoundProfile) -> Unit,
+    modifier: Modifier = Modifier,
+    soundMenuModifier: Modifier = Modifier
 ) {
     LazyColumn(
         verticalArrangement = Arrangement.spacedBy(8.dp),
         contentPadding = PaddingValues(vertical = 8.dp)
     ) {
-        items(
-            items = sounds,
-            key = { it.id },
-            contentType = { "sound_card" }
-        ) { sound ->
+        itemsIndexed(sounds) { index, sound ->
             SoundCard(
+                modifier = if (index == 0) modifier else Modifier,
+                soundMenuModifier = if (index == 0) soundMenuModifier else Modifier,
                 sound = sound,
                 onToggleClick = { enabled ->
                     onToggleSound(sound.id, enabled)
@@ -377,10 +414,11 @@ private fun SoundList(
 private fun StatsAndToggleSection(
     soundCount: Int,
     allEnabled: Boolean,
-    onToggleAllClick: () -> Unit
+    onToggleAllClick: () -> Unit,
+    modifier: Modifier = Modifier
 ) {
     Card(
-        modifier = Modifier
+        modifier = modifier
             .fillMaxWidth()
             .padding(bottom = 4.dp),
         colors = CardDefaults.cardColors(
@@ -1238,6 +1276,7 @@ fun HelpCard(
 fun SoundCard(
     sound: SoundProfile,
     modifier: Modifier = Modifier,
+    soundMenuModifier: Modifier = Modifier,
     isSnoozed: Boolean = false,
     onToggleClick: (enabled: Boolean) -> Unit = {},
     onUnsnoozeClick: () -> Unit = {},
@@ -1483,7 +1522,7 @@ fun SoundCard(
             Box {
                 IconButton(
                     onClick = { showMenu = true },
-                    modifier = Modifier.size(32.dp)
+                    modifier = soundMenuModifier.size(32.dp)
                 ) {
                     Icon(
                         imageVector = Icons.Default.MoreVert,

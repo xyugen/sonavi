@@ -100,4 +100,7 @@ dependencies {
     implementation(libs.gson)
 
     implementation(libs.jtransforms)
+
+    // https://github.com/PierfrancescoSoffritti/tap-target-compose
+    implementation(libs.taptargetcompose.core)
 }
