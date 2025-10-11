@@ -88,9 +88,9 @@ import com.pagzone.sonavi.ui.component.CriticalToggle
 import com.pagzone.sonavi.ui.component.CustomMenuItem
 import com.pagzone.sonavi.ui.component.CustomSearchBar
 import com.pagzone.sonavi.ui.component.SoundFilterChips
-import com.pagzone.sonavi.ui.component.getStandardTapTargetDefinition
 import com.pagzone.sonavi.ui.component.ThresholdSlider
 import com.pagzone.sonavi.ui.component.VibrationPattern
+import com.pagzone.sonavi.ui.component.getStandardTapTargetDefinition
 import com.pagzone.sonavi.util.Constants.Classifier.CONFIDENCE_THRESHOLD
 import com.pagzone.sonavi.util.Constants.SoundProfile.DEFAULT_VIBRATION_PATTERN
 import com.pagzone.sonavi.util.Helper.Companion.stepsToVibrationPattern

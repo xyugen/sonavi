@@ -37,6 +37,7 @@ import com.pagzone.sonavi.util.Constants.Classifier.CONFIDENCE_THRESHOLD
 fun ThresholdSlider(
     onThresholdChange: (Float) -> Unit,
     modifier: Modifier = Modifier,
+    resetValue: Float = CONFIDENCE_THRESHOLD,
     initialValue: Float = CONFIDENCE_THRESHOLD,
     showHelp: Boolean = false
 ) {
@@ -95,9 +96,12 @@ fun ThresholdSlider(
                     )
                 }
                 // Reset button
-                if (soundThreshold != CONFIDENCE_THRESHOLD)
+                if (soundThreshold != resetValue)
                     Surface(
-                        onClick = { soundThreshold = CONFIDENCE_THRESHOLD },
+                        onClick = {
+                            soundThreshold = resetValue
+                            onThresholdChange(resetValue)
+                        },
                         shape = CircleShape,
                         color = MaterialTheme.colorScheme.secondaryContainer.copy(
                             alpha = 0.8f

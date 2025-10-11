@@ -1163,6 +1163,7 @@ private fun SoundDetailsStep(
                 ThresholdSlider(
                     modifier = soundThresholdModifier.padding(20.dp),
                     initialValue = soundThreshold,
+                    resetValue = CUSTOM_CONFIDENCE_THRESHOLD,
                     onThresholdChange = onSoundThresholdChange
                 )
             }
