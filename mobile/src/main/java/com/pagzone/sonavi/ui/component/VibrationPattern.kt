@@ -44,7 +44,6 @@ fun VibrationPattern(
     onDefaultVibrationClick: () -> Unit,
     onCustomVibrationClick: () -> Unit,
     modifier: Modifier = Modifier,
-    isDefaultVibrationPattern: Boolean = true,
     showHelp: Boolean = false
 ) {
     val isDefaultVibrationPattern = initialVibrationPattern == DEFAULT_VIBRATION_PATTERN
