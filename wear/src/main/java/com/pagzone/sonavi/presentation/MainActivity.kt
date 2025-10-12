@@ -2,6 +2,7 @@ package com.pagzone.sonavi.presentation
 
 import android.Manifest
 import android.content.pm.PackageManager
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -31,6 +32,12 @@ class MainActivity : ComponentActivity() {
         // request permission if not granted
         if (!hasPermission(Manifest.permission.RECORD_AUDIO)) {
             requestPermission(Manifest.permission.RECORD_AUDIO)
+        }
+
+        if (!hasPermission(Manifest.permission.POST_NOTIFICATIONS)) {
+            if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+                requestPermission(Manifest.permission.POST_NOTIFICATIONS)
+            }
         }
 
         setContent {
