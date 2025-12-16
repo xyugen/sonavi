@@ -106,7 +106,7 @@ cd sonavi
 | Project Leader & Lead Developer | [Renz Arias](https://github.com/xyugen) |
 | Researcher | Ara Garong |
 | Researcher | [Angel Estonina](https://github.com/yoshirrrr) |
-| Quality Assurance | [Jeric Gonzales](https://github.com/SumaiL-Hassan) |
+| Quality Assurance | [Jeric Gonzales](https://github.com/Ayka-Yao) |
 | UI/UX Designer | [Jomel Mislos](https://github.com/jomlx) |
 
 ## :trophy: Acknowledgements
