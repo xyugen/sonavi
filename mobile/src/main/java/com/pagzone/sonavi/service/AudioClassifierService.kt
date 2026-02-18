@@ -68,20 +68,20 @@ object AudioClassifierService {
                     }
 
                     if (offset >= floatBuffer.size) {
-                        val (sound, confidence) = hybridYamnetClassifier.classify(floatBuffer)
+                        val (sound, score) = hybridYamnetClassifier.classify(floatBuffer)
 
-                        if (sound != null && confidence >= sound.threshold) {
+                        if (sound != null && score >= sound.threshold) {
                             ClassificationResultRepositoryImpl.addResult(
                                 ClassificationResult(
                                     sound.displayName,
-                                    confidence,
+                                    score,
                                     sound.isCritical
                                 )
                             )
 
                             clientDataViewModel.sendPrediction(
                                 sound.displayName,
-                                confidence,
+                                score,
                                 sound.isCritical,
                                 VibrationEffectDTO(
                                     timings = sound.vibrationPattern,
@@ -91,13 +91,13 @@ object AudioClassifierService {
 
                             if (sound.isCritical) {
                                 Log.d("AudioClassifierService", "Handling emergency event")
-                                EmergencyHandler.handleEmergencyEvent(sound, confidence)
+                                EmergencyHandler.handleEmergencyEvent(sound, score)
                                 Log.d("AudioClassifierService", "Emergency event handled")
                             }
 
                             Log.d(
                                 "FewShot",
-                                "Label: ${sound.displayName}, Conf: $confidence"
+                                "Label: ${sound.displayName}, Conf: $score"
                             )
                         }
 
